@@ -75,7 +75,6 @@ cCompile(){
 ./clean.sh
 
 mkdir build/.bin
-mkdir build/.iso/boot
 
 clear
 
