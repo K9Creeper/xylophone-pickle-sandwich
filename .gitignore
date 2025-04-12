@@ -1,8 +1,8 @@
 .vscode
 .bin
-.iso/boot
 
 debug-log.txt
 *.o
 *.bin
-*.iso
+
+image.iso
