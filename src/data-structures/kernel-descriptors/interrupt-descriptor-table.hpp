@@ -1,6 +1,6 @@
 /// ---------------------------
 /// interrupt-descriptor-table.hpp
-/// @brief This file declares the structures to the Interrupt Descriptor Table.
+/// @brief This file defines the structures to the Interrupt Descriptor Table.
 
 #pragma once
 
@@ -8,15 +8,15 @@
 
 struct Interrupt_Descriptor_Table_Entry
 {
-    unsigned short base_low;
-    unsigned short sel;
-    unsigned char always0;
-    unsigned char flags;
-    unsigned short base_high;
+    uint16_t base_low;
+    uint16_t selector;
+    uint8_t always0;
+    uint8_t flags;
+    uint16_t base_high;
 } __attribute__((packed));
 
 struct Interrupt_Descriptor_Table_Pointer
 {
-    unsigned short limit;
-    unsigned int base;
+    uint16_t limit;
+    uint32_t base;
 } __attribute__((packed));
