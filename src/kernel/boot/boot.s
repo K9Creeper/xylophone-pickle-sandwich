@@ -51,7 +51,9 @@ _entry_higher:
 
     movl $stack_top, %esp
 
+    # Multiboot2 address
     push %eax
+    # Multiboot2 magic
     push %ebx
 
     call kernel_main
