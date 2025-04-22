@@ -31,8 +31,10 @@ enum VGA_Color : uint16_t {
 
 namespace Kernel{
     namespace Misc{
+		extern bool VGA_isUsing();
+
 		extern void VGA_Terminal_Init();
+		extern void VGA_Terminal_Destroy();
 		extern void VGA_Terminal_writestring(const char *format, ...);
-		extern void VGA_Terminal_setcolor(uint8_t color);
 	}
 }

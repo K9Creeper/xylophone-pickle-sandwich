@@ -10,10 +10,10 @@
 
 static bool bInitialized = false;
 
-static uint16_t terminal_row;
-static uint16_t terminal_column;
-static uint8_t terminal_color;
-static uint16_t *terminal_buffer = (uint16_t *)VGA_MEMORY;
+static uint16_t VGA_Terminal_row;
+static uint16_t VGA_Terminal_column;
+static uint8_t VGA_Terminal_color;
+static uint16_t *VGA_Terminal_buffer = (uint16_t *)VGA_MEMORY;
 
 static uint8_t VGA_Terminal_entry_color(VGA_Color fg, VGA_Color bg)
 {
@@ -25,48 +25,41 @@ static uint16_t VGA_Terminal_entry(unsigned char uc, uint8_t color)
 	return (uint16_t)uc | (uint16_t)color << 8;
 }
 
-void Kernel::Misc::VGA_Terminal_setcolor(uint8_t color)
-{
-	if (!bInitialized)
-		return;
-	terminal_color = color;
-}
-
 static void VGA_Terminal_putentryat(char c, uint8_t color, uint16_t x, uint16_t y)
 {
 	const uint16_t index = y * VGA_WIDTH + x;
-	terminal_buffer[index] = VGA_Terminal_entry(c, color);
+	VGA_Terminal_buffer[index] = VGA_Terminal_entry(c, color);
 }
 
 static void VGA_Terminal_putchar(char c)
 {
-	VGA_Terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
-	if (++terminal_column == VGA_WIDTH)
+	VGA_Terminal_putentryat(c, VGA_Terminal_color, VGA_Terminal_column, VGA_Terminal_row);
+	if (++VGA_Terminal_column == VGA_WIDTH)
 	{
-		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT)
-			terminal_row = 0;
+		VGA_Terminal_column = 0;
+		if (++VGA_Terminal_row == VGA_HEIGHT)
+			VGA_Terminal_row = 0;
 	}
 }
 
-void VGA_Terminal_write(const char *data, uint16_t size)
+static void VGA_Terminal_write(const char *data, uint16_t size)
 {
 	for (uint16_t i = 0; i < size; i++)
 	{
 		switch (data[i])
 		{
 		case '\n':
-			terminal_row++;
-			terminal_column = 0;
+			VGA_Terminal_row++;
+			VGA_Terminal_column = 0;
 			break;
 
 		case '\t':
-			terminal_column+=8;
+			VGA_Terminal_column+=8;
 			
 			break;
 
 		case '\b':
-			terminal_column--;
+			VGA_Terminal_column--;
 
 			break;
 		default:
@@ -174,20 +167,41 @@ void Kernel::Misc::VGA_Terminal_writestring(const char *format, ...)
 	va_end(args);
 }
 
+bool Kernel::Misc::VGA_isUsing(){
+	return bInitialized;
+}
+
 void Kernel::Misc::VGA_Terminal_Init()
 {
-	terminal_row = 0;
-	terminal_column = 0;
-	terminal_color = VGA_Terminal_entry_color(VGA_Color_Light_Grey, VGA_Color_Black);
+	VGA_Terminal_row = 0;
+	VGA_Terminal_column = 0;
+	VGA_Terminal_color = VGA_Terminal_entry_color(VGA_Color_Light_Grey, VGA_Color_Black);
 
 	for (uint16_t y = 0; y < VGA_HEIGHT; y++)
 	{
 		for (uint16_t x = 0; x < VGA_WIDTH; x++)
 		{
 			const uint16_t index = y * VGA_WIDTH + x;
-			terminal_buffer[index] = VGA_Terminal_entry(' ', terminal_color);
+			VGA_Terminal_buffer[index] = VGA_Terminal_entry(' ', VGA_Terminal_color);
 		}
 	}
 
 	bInitialized = true;
+}
+
+void Kernel::Misc::VGA_Terminal_Destroy(){
+	VGA_Terminal_row = 0;
+	VGA_Terminal_column = 0;
+	VGA_Terminal_color = VGA_Terminal_entry_color(VGA_Color_Light_Grey, VGA_Color_Black);
+
+	for (uint16_t y = 0; y < VGA_HEIGHT; y++)
+	{
+		for (uint16_t x = 0; x < VGA_WIDTH; x++)
+		{
+			const uint16_t index = y * VGA_WIDTH + x;
+			VGA_Terminal_buffer[index] = VGA_Terminal_entry(' ', VGA_Terminal_color);
+		}
+	}
+
+	bInitialized = false;
 }
