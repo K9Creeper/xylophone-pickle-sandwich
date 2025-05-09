@@ -8,12 +8,15 @@
 
 #include "../../../helpers/string.h"
 
+#define VGA_WIDTH   80
+#define VGA_HEIGHT  25
+
 static bool bInitialized = false;
 
 static uint16_t VGA_Terminal_row;
 static uint16_t VGA_Terminal_column;
 static uint8_t VGA_Terminal_color;
-static uint16_t *VGA_Terminal_buffer = (uint16_t *)VGA_MEMORY;
+static uint16_t *VGA_Terminal_buffer = nullptr;
 
 static uint8_t VGA_Terminal_entry_color(VGA_Color fg, VGA_Color bg)
 {
@@ -171,8 +174,10 @@ bool Kernel::Misc::VGA_isUsing(){
 	return bInitialized;
 }
 
-void Kernel::Misc::VGA_Terminal_Init()
+void Kernel::Misc::VGA_Terminal_Init(uint32_t bufferAddress)
 {
+	VGA_Terminal_buffer = reinterpret_cast<uint16_t *>(bufferAddress);
+
 	VGA_Terminal_row = 0;
 	VGA_Terminal_column = 0;
 	VGA_Terminal_color = VGA_Terminal_entry_color(VGA_Color_Light_Grey, VGA_Color_Black);

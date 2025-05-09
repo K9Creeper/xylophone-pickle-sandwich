@@ -26,9 +26,10 @@ static void Setup_Descriptors();
 extern "C" void kernel_main(uint32_t addr, uint32_t magic)
 {
     cli;
-    Setup_Terminal_Display();
-
     Setup_Serial_Com1();
+
+    Setup_Terminal_Display();
+    terminalf("Booting...\n");
 
     if (magic != MULTIBOOT2_BOOTLOADER_MAGIC) goto halt;
 
@@ -37,7 +38,7 @@ extern "C" void kernel_main(uint32_t addr, uint32_t magic)
     Setup_Descriptors();
     
     terminalf("Descriptors Initialized.\n");
-
+    
     halt:
     for (;;)
     {
@@ -57,6 +58,8 @@ static void terminalf(const char* f, ...) {
     va_list args;
     va_start(args, f);
     Kernel::Misc::VGA_Terminal_writestring(f, args);
+    printf("Terminal: ");
+    printf(f, args);
     va_end(args);
 }
 

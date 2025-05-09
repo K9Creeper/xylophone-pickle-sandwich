@@ -28,7 +28,7 @@ void Global_Descriptor_Table_SetGate(int index, unsigned long base, unsigned lon
 
 void Kernel::Descriptors::Global_Descriptor_Table_Init(){
     _pGDT.limit = (sizeof(Global_Descriptor_Table_Entry) * KERNEL_DESCRIPTORS_GDT_ENTRYCOUT) - 1;
-    _pGDT.base = (uint32_t)(&pGDT);
+    _pGDT.base = reinterpret_cast<uint32_t>(&pGDT);
 }
 
 void Kernel::Descriptors::Global_Descriptor_Table_Install(){

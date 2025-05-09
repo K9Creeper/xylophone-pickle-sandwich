@@ -11,7 +11,7 @@
     <h3> A Higher-Half Kernel | <code>boot.s</code> </h3>
         <p>This kernel is a higher-half kernel. It runs in the higher-half of the virtual address space; it runs at the address <code>0xC0000000</code>.</p>
     <h3>How It's Done</h3>
-        <p>In actuality, the kernel is initially loaded at a physical address, which differs from the virtual address it will eventually run at.</p>
+        <p>In actuality, the kernel is initially loaded at a physical address (<code>0x100000</code>), which differs from the virtual address it will eventually run at.</p>
         <ol>
             <li> Enabling Paging </li>
                 <p>The goal is to run the kernel at a higher virtual address. This is achieved through paging by defining a page directory, identity mapping the kernel's physical location, mapping the higher-half virtual address, loading the page directory, and then enabling paging.</p>
@@ -22,7 +22,7 @@
         </ol>
 
 <h2> To C/C++ </h2>
-    <p> Previously, everything was running in ASM. But, that's no fun (in my opinion). So, how do we get to the fun? </p>
+    <p> Previously, everything was running in ASM. Lets be honest, that's no fun (in my opinion). So, how do we get to the fun? </p>
     <h3> !! Very Complicated !! </h3>
     <p> Ya, that's right: 
     <br>

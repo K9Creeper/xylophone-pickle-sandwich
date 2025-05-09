@@ -2,14 +2,29 @@
     <p> Interrupts are signals that temporarily halt the CPU's current operations to immediately address an important task or event. These interrupt handles are stored in the IDT.</p>
   
 <h2> The Interrupt Service Routine (ISR) </h2>
-<p> A 'service' that executes a task (in a literary sense) after reciving a Interrupt Request (IRQ). Think of the ISR as a handle listening for a ping by a IRQ. </p>
+  <p> A 'service' that executes a task ("task" in a literary sense) after reciving a Interrupt Request (IRQ). Think of the ISR as a handle listening for a ping by a IRQ. </p>
+
+<h3> <code>Interrupt_Service_AddGates()</code> | <code>interrupt-service.cpp</code> </h3>
+  <p> This function is really just a wrapper--to the <code> Interrupt_Descriptor_SetGate</code> function--setting the <a href="#EXCEPTIONS">exeption IDT gates (IDT Vectors 0-31)</a>, adding handles for each entry.<br/><br/>But how are these handles handled?</p>
+
+<h3 id="ISR_HANDLE"> A ISR Handle | <code>interrupt-service.s</code> </h3>
+  <p> Each ISR handle consists of the same strucure / concept. </p>
+  <ol>
+    <li> Clearing interrupts <br/> <code>cli</code> </li>
+    <li> Pushing 0 to the stack <br/> <code>pushl $0</code> </li>
+    <li> Pushing the vector number to the stack <br/> <code>pushl $V3CT0R_NUM83R</code> </li>
+    <li> Jumping to the common ISR stub </li>
+  </ol>
+
+<h3> The <code>isr_common_stub</code> | <code>interrupt-service.s</code> </h3>
+  <p> At the end of a <a href="#ISR_HANDLE">ISR handle's</a> execution the handle jumps to <code>isr_common_stub</code>.</p>
 
 <h2> A Interrupt Request (IRQ) </h2>
-<p> A hardware signal sent to the processor, such as the keyboard and mouse. </p>
+  <p> A hardware signal sent to the processor, such as the keyboard and mouse. </p>
 
 <h2 id="IDT_TABLES"> Interrupt Descriptor Table Gates </h2>
 
-<h3> Exceptions (IDT Vectors 0-31) </h3>
+<h3 id="EXCEPTIONS"> Exceptions (IDT Vectors 0-31) </h3>
 <table border="1" cellpadding="5" cellspacing="0">
   <thead>
     <tr>

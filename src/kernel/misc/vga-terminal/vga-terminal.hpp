@@ -6,10 +6,6 @@
 
 #include <stdint.h>
 
-#define VGA_WIDTH   80
-#define VGA_HEIGHT  25
-#define VGA_MEMORY  (0xB8000 + 0xC0000000)
-
 enum VGA_Color : uint16_t {
 	VGA_Color_Black = 0,
 	VGA_Color_Blue = 1,
@@ -32,8 +28,7 @@ enum VGA_Color : uint16_t {
 namespace Kernel{
     namespace Misc{
 		extern bool VGA_isUsing();
-
-		extern void VGA_Terminal_Init();
+		extern void VGA_Terminal_Init(uint32_t bufferAddress = (0xB8000 + 0xC0000000));
 		extern void VGA_Terminal_Destroy();
 		extern void VGA_Terminal_writestring(const char *format, ...);
 	}
