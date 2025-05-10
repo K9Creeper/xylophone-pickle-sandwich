@@ -1,6 +1,6 @@
 /// --------
-/// heap.hpp
-/// This file contains the definition of the Heap class.
+/// heap-manager.hpp
+/// This file contains the definition of the Heap_Manager class.
 
 #pragma once
 
@@ -8,7 +8,7 @@
 
 class Paging_Manager;
 
-class Heap
+class Heap_Manager
 {
     protected:
         Paging_Manager* paging_manager;
@@ -29,7 +29,7 @@ class Heap
         
         void* Allocate(uint32_t size, bool should_align = false);
         void _Free(void* address);
-
+    
         uint32_t start_address;
         uint32_t end_address;
         uint32_t max_end_address;

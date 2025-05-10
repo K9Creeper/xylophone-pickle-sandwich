@@ -1,6 +1,6 @@
 /// ----------
-/// paging.hpp
-/// This file contains the definition of the Paging class.
+/// paging-manager.hpp
+/// This file contains the definition of the Paging_Manager class.
 
 #pragma once
 
