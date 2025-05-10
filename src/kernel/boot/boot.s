@@ -12,8 +12,8 @@ stack_top:
 
 .section .data
 .align 4096
-.global pageDirectory
-pageDirectory:
+.global page_directory
+page_directory:
     .long 0x00000083                            # Identity map the first 4MB
     .fill (KPAGE_NUM - 1), 4, 0x00000000
     .long 0x00000083                            # Map the higher half (initially same as first 4mb for jump)
@@ -27,7 +27,7 @@ _start:
     cli
 
     # load page dir
-    movl $(pageDirectory - KVIRT_BASE), %ecx
+    movl $(page_directory - KVIRT_BASE), %ecx
     movl %ecx, %cr3
 
     # enable 4mb paging
@@ -46,7 +46,7 @@ _start:
 
 _entry_higher:
     # invalidate table
-    movl $0x00000000, pageDirectory
+    movl $0x00000000, page_directory
     invlpg [0]
 
     movl $stack_top, %esp
