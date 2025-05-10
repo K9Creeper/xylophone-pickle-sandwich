@@ -18,3 +18,13 @@ struct Footer
     uint32_t magic;
     Header* header;
 };
+
+typedef void* Heap_Entry;
+
+#include "../../helpers/ordered-array.hpp"
+
+class Heap_Array : Ordered_Array<Heap_Entry>
+{
+    public:
+        bool Insert(Heap_Entry entry);
+};
