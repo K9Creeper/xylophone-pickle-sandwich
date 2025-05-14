@@ -1,4 +1,4 @@
-/// --------
+/// ----------------
 /// heap-manager.hpp
 /// This file contains the definition of the Heap_Manager class.
 
@@ -28,7 +28,7 @@ class Heap_Manager
         uint32_t Contract(uint32_t new_size);
         
         void* Allocate(uint32_t size, bool should_align = false);
-        void _Free(void* address);
+        void _Free(uint32_t address);
     
         uint32_t start_address;
         uint32_t end_address;
@@ -40,8 +40,8 @@ class Heap_Manager
         uint32_t Get_Max_End_Address() const;
 
         void Pre_Initialize(uint32_t end);
-        void Initialize(uint32_t start_address, uint32_t end_address, bool is_supervisor = false, bool is_readonly = false, Paging_Manager* paging_manager = nullptr);
+        void Initialize(uint32_t start_address, uint32_t end_address, uint32_t max_end_address, bool is_supervisor = false, bool is_readonly = false, Paging_Manager* paging_manager = nullptr);
 
         uint32_t Malloc(uint32_t size, bool should_align = false, uint32_t* physical_address = nullptr);
-        uint32_t Free(uint32_t address);
+        void Free(uint32_t address);
 };

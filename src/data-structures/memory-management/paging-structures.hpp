@@ -22,15 +22,15 @@ struct Page_Directory_Entry
 
 struct Page_Entry
 {
-    unsigned int present : 1;
-    unsigned int rw : 1;
-    unsigned int user : 1;
-    unsigned int reserved : 2;
-    unsigned int accessed : 1;
-    unsigned int dirty : 1;
-    unsigned int reserved2 : 2;
-    unsigned int available : 3;
-    unsigned int frame : 20;
+    uint32_t present : 1;
+    uint32_t rw : 1;
+    uint32_t user : 1;
+    uint32_t reserved : 2;
+    uint32_t accessed : 1;
+    uint32_t dirty : 1;
+    uint32_t reserved2 : 2;
+    uint32_t available : 3;
+    uint32_t frame : 20;
 };
 
 struct Page_Table
@@ -38,7 +38,7 @@ struct Page_Table
     Page_Entry pages[1024];
 };
 
-struct PageDirectory
+struct Page_Directory
 {
     Page_Directory_Entry tables[1024];
     Page_Table *ref_tables[1024];

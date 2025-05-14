@@ -4,17 +4,17 @@
 
 #include "heap-structures.hpp"
 
-static bool Is_Less_Than(Entry a, Entry b)
+static bool Is_Less_Than(Heap_Entry a, Heap_Entry b)
 {
-    return ((reinterpret_cast<Header *>(a))->size < (reinterpret_cast<Header *>(b))->size);
+    return ((reinterpret_cast<Heap_Header *>(a))->size < (reinterpret_cast<Heap_Header *>(b))->size);
 }
 
-bool HeapOrderedArray::Insert(Entry item)
+bool Heap_Array::Insert(Heap_Entry item)
 {
     uint32_t i;
 
-    static Entry tmp;
-    static Entry tmp2;
+    static Heap_Entry tmp;
+    static Heap_Entry tmp2;
 
     i = 0;
 

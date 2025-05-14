@@ -1,4 +1,4 @@
-/// ----------
+/// ------------------
 /// paging-manager.hpp
 /// This file contains the definition of the Paging_Manager class.
 
@@ -14,8 +14,13 @@ class Paging_Manager{
         Page_Directory* page_directory;
     private:
         bool bInitialized;
+        bool bEnabled;
+        
     public:
-        void Initialize(Page_Directory* page_directory, Heap_Manager* heap_manager, bool should_clear = false);
+        void Initialize(Page_Directory* page_directory, Heap_Manager* heap_manager, bool should_clear = true);
+        
+        // Only used for pre-initialization IN THE KERNEL, never after...only ran one time THROUGHOUT FULL RUNTIME.
+        void Post_Initialize();
 
         // Getters & Setters
         bool Is_Enabled() const;
@@ -24,6 +29,9 @@ class Paging_Manager{
         void Swap_Heap_Manager(Heap_Manager* heap_manager);
         Heap_Manager* Get_Heap_Manager() const;
 
+        static void Swap_System_Page_Directory(uint32_t cr3, bool is_physical = false);
+        
+        void Set_As_System_Paging(bool is_physical = false);
         void Swap_Page_Directory(Page_Directory* page_directory);
         Page_Directory* Get_Page_Directory() const;
 
@@ -32,12 +40,16 @@ class Paging_Manager{
         // Do(ers)
         void Enable();
 
-        void Identity_Allocate(uint32_t address, bool is_kernel = false, bool is_writeable);
+        static void Allocate_Page(Page_Directory* page_directory, uint32_t address, uint32_t frame, bool is_kernel = false, bool is_writeable = false);
+
+        void Identity_Allocate(uint32_t address, bool is_kernel = false, bool is_writeable = false);
         void Identity_Allocate(uint32_t start_address, uint32_t end_address, bool is_kernel = false, bool is_writeable = false);
 
-        void Allocate(uint32_t address, uint32_t frame, bool is_kernel = false, bool is_writeable = false);
-        void Allocate(uint32_t start_address, uint32_t end_address, uint32_t frame, bool is_kernel = false, bool is_writeable = false);
+        void Allocate(uint32_t address, bool is_kernel = false, bool is_writeable = false);
+        void Allocate(uint32_t start_address, uint32_t end_address, bool is_kernel = false, bool is_writeable = false);
+
+        static void Free_Page(Page_Directory* page_directory, uint32_t address, bool should_free);
 
         void Free(uint32_t address, bool should_free);
-        void Free(uint32_t start_address, uint32_t end_address, bool should_free = false);
+        void Free(uint32_t start_address, uint32_t end_address, bool should_free);
 };
