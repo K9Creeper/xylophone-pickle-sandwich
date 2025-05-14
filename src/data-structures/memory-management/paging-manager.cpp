@@ -13,7 +13,7 @@
 // boot.s
 extern "C" Page_Directory *boot_page_directory;
 
-extern Physical_Memory_Manager physical_memory_manager;
+Physical_Memory_Manager system_physical_memory_manager;
 
 Page_Directory *current_system_page_directory = boot_page_directory;
 Paging_Manager *current_system_paging_manager = nullptr;
@@ -210,7 +210,7 @@ void Paging_Manager::Allocate_Page(Page_Directory *page_directory, uint32_t virt
         if (frame)
             t = frame;
         else
-            t = physical_memory_manager.Allocate_Block();
+            t = system_physical_memory_manager.Allocate_Block();
 
         table->pages[page_tbl_idx].frame = t;
         table->pages[page_tbl_idx].present = 1;
@@ -265,7 +265,7 @@ void Paging_Manager::Free_Page(Page_Directory *page_directory, uint32_t address,
     }
 
     if (should_free)
-        physical_memory_manager.Free_Block(table->pages[page_table_idx].frame);
+        system_physical_memory_manager.Free_Block(table->pages[page_table_idx].frame);
 
     table->pages[page_table_idx].present = 0;
     table->pages[page_table_idx].frame = 0;
