@@ -45,3 +45,5 @@ uint32_t Ordered_Array<type_t>::Get_Max_Size() const
 {
 	return max_size;
 }
+
+template class Ordered_Array<void*>;
