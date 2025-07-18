@@ -1,6 +1,6 @@
 /// ------------------
 /// paging-manager.cpp
-/// This file contains the definitions of the Paging_Manager class methods...and managing overall system paging.
+/// @breif This file contains the definitions of the Paging_Manager class methods...and managing overall system paging.
 
 #include "paging-manager.hpp"
 
@@ -17,7 +17,8 @@ Physical_Memory_Manager system_physical_memory_manager;
 
 Page_Directory *current_system_page_directory = boot_page_directory;
 Paging_Manager *current_system_paging_manager = nullptr;
-Heap_Manager *current_system_heap_manager = nullptr;
+
+extern Heap_Manager *current_system_heap_manager;
 
 static bool bEnabled = false;
 static bool bPSEEnabled = true;
@@ -68,7 +69,7 @@ static void DisablePSEReg()
 
 void Paging_Manager::Initialize(Page_Directory *page_directory, Heap_Manager *heap_manager, bool should_clear)
 {
-    if (!page_directory || !heap_manager)
+    if (!page_directory || !heap_manager || !system_physical_memory_manager.Is_Initialized())
         return;
 
     this->page_directory = page_directory;
@@ -107,7 +108,7 @@ Heap_Manager *Paging_Manager::Get_Heap_Manager() const
     return this->heap_manager;
 }
 
-// Never really used, but useful for just in case.
+// Never really used, but useful just in case.
 void Paging_Manager::Swap_System_Page_Directory(uint32_t cr3, bool is_physical = false)
 {
     if (!cr3)
@@ -127,6 +128,9 @@ void Paging_Manager::Swap_System_Page_Directory(uint32_t cr3, bool is_physical =
 
 void Paging_Manager::Set_As_System_Paging(bool is_physical = false)
 {
+    if(!bInitialized)
+        return;
+    
     uint32_t t;
 
     if (!is_physical)
@@ -161,7 +165,7 @@ uint32_t Paging_Manager::Get_Physical_Address(uint32_t virtual_address) const
 
 void Paging_Manager::Enable()
 {
-    if (bEnabled)
+    if (bEnabled || !bInitialized)
         return;
 
     DisablePSEReg();
@@ -221,11 +225,16 @@ void Paging_Manager::Allocate_Page(Page_Directory *page_directory, uint32_t virt
 
 void Paging_Manager::Identity_Allocate(uint32_t address, bool is_kernel, bool is_writeable)
 {
+    if(!bInitialized)
+        return;
     Allocate_Page(this->page_directory, address, (address / 0x1000), is_kernel, is_writeable);
 }
 
 void Paging_Manager::Identity_Allocate(uint32_t start_address, uint32_t end_address, bool is_kernel, bool is_writeable)
 {
+    if(!bInitialized)
+        return;
+
     for (; start_address < end_address + 0x1000; start_address += 0x1000)
     {
         Identity_Allocate(start_address, is_kernel, is_writeable);
@@ -234,11 +243,17 @@ void Paging_Manager::Identity_Allocate(uint32_t start_address, uint32_t end_addr
 
 void Paging_Manager::Allocate(uint32_t address, bool is_kernel, bool is_writeable)
 {
+    if(!bInitialized)
+        return;
+
     Allocate_Page(this->page_directory, address, 0, is_kernel, is_writeable);
 }
 
 void Paging_Manager::Allocate(uint32_t start_address, uint32_t end_address, bool is_kernel, bool is_writeable)
 {
+    if(!bInitialized)
+        return;
+
     for (; start_address < end_address; start_address += 0x1000)
     {
         Allocate(start_address, is_kernel, is_writeable);
@@ -273,11 +288,17 @@ void Paging_Manager::Free_Page(Page_Directory *page_directory, uint32_t address,
 
 void Paging_Manager::Free(uint32_t address, bool should_free)
 {
+    if(!bInitialized)
+        return;
+
     Free_Page(this->page_directory, address, should_free);
 }
 
 void Paging_Manager::Free(uint32_t start_address, uint32_t end_address, bool should_free)
 {
+    if(!bInitialized)
+        return;
+        
     for (; start_address <= end_address; start_address += 0x1000)
     {
         Free(start_address, should_free);

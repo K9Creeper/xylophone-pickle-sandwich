@@ -1,6 +1,6 @@
 /// ---------------------------
 /// physical-memory-manager.hpp
-/// This file contains the definition of the Physical_Memory_Manager_Bitmap and Physical_Memory_Manager class.
+/// @breif This file contains the definition of the Physical_Memory_Manager_Bitmap and Physical_Memory_Manager class.
 
 #pragma once
 
@@ -18,6 +18,8 @@ class Physical_Memory_Manager
 {
     protected:
         Physical_Memory_Manager_Bitmap bitmap;
+    private:
+        bool bInitialized;
     public:
         void Initialize(uint32_t memory_size);
 
@@ -25,4 +27,6 @@ class Physical_Memory_Manager
         void Free_Block(uint32_t block_number);
         
         uint32_t Get_First_Free_Block(); 
+
+        bool Is_Initialized()const;
 };

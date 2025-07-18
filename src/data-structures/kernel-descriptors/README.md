@@ -1,4 +1,4 @@
-<h1> A Kernel's Descriptor Tables Structures </h1>
+<h1> A Kernel's Descriptor Tables Structures (x86) </h1>
     <p> Descriptor tables in general are 'arrays' or structures that hold information for about something. </p>
 <h2> The Global Descriptor Table </h2>
     <p> The GDT (Global Descriptor Table) is a descriptor table (duh). Mainly, the GDT describes memory segments, most notably containing details about address start, size, access permissions.</p>

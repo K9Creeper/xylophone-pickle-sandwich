@@ -1,6 +1,6 @@
 /// ---------------------------
 /// physical-memory-manager.cpp
-/// This file contains the definition of the Physical_Memory_Manager_Bitmap and Physical_Memory_Manager class methods.
+/// @breif This file contains the definition of the Physical_Memory_Manager_Bitmap and Physical_Memory_Manager class methods.
 
 #include "physical-memory-manager.hpp"
 
@@ -8,7 +8,7 @@
 
 #include "../../helpers/memory.h"
 
-extern Heap_Manager kernel_heap_manager;
+extern Heap_Manager *current_system_heap_manager;
 
 void Physical_Memory_Manager_Bitmap::Clear()
 {
@@ -17,14 +17,19 @@ void Physical_Memory_Manager_Bitmap::Clear()
 
 void Physical_Memory_Manager::Initialize(uint32_t memory_size)
 {
+    if(bInitialized)
+        return;
+    
     bitmap.Create();
 
     const int count = memory_size / 0x1000;
     const int size = (count / bitmap.Get_Bytes_Per_Entry());
 
-    bitmap.Place(reinterpret_cast<void *>(kernel_heap_manager.Malloc(size)), size);
+    bitmap.Place(reinterpret_cast<void *>(current_system_heap_manager->Malloc(size)), size);
 
     bitmap.Clear();
+
+    bInitialized = true;
 }
 
 uint32_t Physical_Memory_Manager::Allocate_Block(){
@@ -51,4 +56,8 @@ uint32_t Physical_Memory_Manager::Get_First_Free_Block(){
             return i;
     }
     return static_cast<uint32_t>(-1);
+}
+
+bool Physical_Memory_Manager::Is_Initialized()const{
+    return bInitialized;
 }

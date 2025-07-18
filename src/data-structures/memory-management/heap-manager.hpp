@@ -1,6 +1,6 @@
 /// ----------------
 /// heap-manager.hpp
-/// This file contains the definition of the Heap_Manager class.
+/// @breif This file contains the definition of the Heap_Manager class.
 
 #pragma once
 

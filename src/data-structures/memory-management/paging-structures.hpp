@@ -1,6 +1,6 @@
 /// ---------------------
 /// paging-structures.hpp
-/// This file contains the definition of paging-related data structures.
+/// @breif This file contains the definition of paging-related data structures.
 #pragma once
 
 #include <stdint.h>

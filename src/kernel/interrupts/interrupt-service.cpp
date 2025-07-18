@@ -46,14 +46,21 @@ extern void Interrupt_Descriptor_SetGate(unsigned char num, unsigned int base, u
 static void *isrs_handles[32];
 static void *isrs_fault_handles[32];
 
+extern "C" void printf(const char* f, ...);
+
 extern "C" void isr_handler(Registers r)
 {
     if (r.int_no < 32)
     {
+        printf("Fault %D\n", r.int_no);
         Kernel::Interrupts::Interrupt_Service_Handle handler = reinterpret_cast<Kernel::Interrupts::Interrupt_Service_Handle>(isrs_fault_handles[r.int_no]);
         if (handler)
         {
             handler(&r);
+        }
+
+        for(;;){
+            asm volatile("hlt");
         }
     }
 

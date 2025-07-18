@@ -1,11 +1,12 @@
 /// -------------------
 /// heap-structures.hpp
-/// This file contains the definition of heap-related data structures.
+/// @breif This file contains the definition of heap-related data structures.
 #pragma once
 
 #include <stdint.h>
 
 #define HEAP_MAGIC 0xDEADBEEF
+// 4096 MAX ENTRIES
 #define HEAP_INDEX_SIZE 0x20000
 #define HEAP_MIN_SIZE 0x70000
 

@@ -1,6 +1,6 @@
 /// -------------------
 /// heap-structures.cpp
-/// This file contains the definitions of heap-related data structures' functions.
+/// @breif This file contains the definitions of heap-related data structures' functions.
 
 #include "heap-structures.hpp"
 

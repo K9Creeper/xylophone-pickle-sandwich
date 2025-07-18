@@ -1,10 +1,12 @@
 /// ----------------
 /// heap-manager.hpp
-/// This file contains the definition of the Heap_Manager class methods.
+/// @breif This file contains the definition of the Heap_Manager class methods.
 
 #include "heap-manager.hpp"
 
 #include "paging-manager.hpp"
+
+Heap_Manager *current_system_heap_manager = nullptr;
 
 uint32_t Heap_Manager::Get_Start_Address() const
 {
@@ -33,7 +35,7 @@ void Heap_Manager::Pre_Initialize(uint32_t end)
 
 void Heap_Manager::Initialize(uint32_t start_address, uint32_t end_address, uint32_t max_end_address, bool is_supervisor, bool is_readonly, Paging_Manager *paging_manager)
 {
-    if (bInitialized || !bPreInitialized || !paging_manager)
+    if (bInitialized || !bPreInitialized || !paging_manager || !paging_manager->Is_Initialized())
         return;
 
     this->paging_manager = paging_manager;
@@ -63,6 +65,9 @@ void Heap_Manager::Initialize(uint32_t start_address, uint32_t end_address, uint
     hole->is_hole = true;
 
     heap_array.Insert(reinterpret_cast<void *>(hole));
+
+    if(!current_system_heap_manager)
+        current_system_heap_manager = this;
 
     bInitialized = true;
 }
