@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Kernel (build.sh)",
+      "type": "shell",
+      "command": "${workspaceFolder}/build.sh",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "options": {
+        "env": {
+          "PATH": "$HOME/opt/cross/bin:${env:PATH}",
+          "TARGET": "i686-elf"
+        }
+      }
+    }
+  ]
+}

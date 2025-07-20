@@ -1,0 +1,30 @@
+{
+  "configurations": [
+    {
+      "name": "WSL Kernel 32-bit",
+      "intelliSenseMode": "gcc-x86",
+      "cStandard": "gnu99",
+      "includePath": [
+        "${workspaceFolder}/include"
+      ],
+      "defines": [
+        "__GNUC__",
+        "__BAREMETAL__"
+      ],
+      "compilerPath": "${env:HOME}/opt/cross/bin/i686-elf-gcc",
+      "compilerArgs": [
+        "-m32",
+        "-ffreestanding",
+        "-nostdlib",
+        "-O2"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}/include"
+        ],
+        "limitSymbolsToIncludedHeaders": true
+      }
+    }
+  ],
+  "version": 4
+}

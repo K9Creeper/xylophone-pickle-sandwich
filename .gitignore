@@ -1,0 +1,11 @@
+.vscode/*
+!.vscode/c_cpp_properties.json
+!.vscode/tasks.json
+
+.bin
+
+debug-log.txt
+*.o
+*.bin
+
+image.iso
