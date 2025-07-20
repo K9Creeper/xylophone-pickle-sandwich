@@ -10,8 +10,9 @@
 
 typedef struct physical_memory_manager_s{
     bitmap_t bitmap;
-
     bool is_initialized;
+
+    bool failed;
 } physical_memory_manager_t;
 
 extern void physical_memory_manager_init(physical_memory_manager_t* physical_memory_manager, uint32_t memory_size);
@@ -20,5 +21,7 @@ extern uint32_t physical_memory_manager_allocate_block(physical_memory_manager_t
 extern void physical_memory_manager_free_block(physical_memory_manager_t* physical_memory_manager, uint32_t block_number);
 
 extern bool physical_memory_manager_get_first_free_block(physical_memory_manager_t* physical_memory_manager, uint32_t* out); 
+
+extern bool physical_memory_manager_is_valid_block(physical_memory_manager_t* physical_memory_manager, uint32_t block);
 
 #endif

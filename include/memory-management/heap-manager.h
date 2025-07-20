@@ -28,6 +28,8 @@ typedef struct heap_manager_s{
     bool is_supervisor;
     bool is_readonly;
 
+    bool use_identity_mapping;
+
     uint32_t start_address;
     uint32_t end_address;
     uint32_t max_end_address;
@@ -36,7 +38,7 @@ typedef struct heap_manager_s{
 } heap_manager_t;
 
 extern void heap_manager_pre_init(heap_manager_t* heap, uint32_t end);
-extern void heap_manager_init(heap_manager_t* heap, uint32_t start_address, uint32_t end_address, uint32_t max_end_address, bool is_supervisor, bool is_readonly, struct paging_manager_s* paging_manager);
+extern void heap_manager_init(heap_manager_t* heap, uint32_t start_address, uint32_t end_address, uint32_t max_end_address, bool is_supervisor, bool is_readonly, bool use_identity_mapping, struct paging_manager_s* paging_manager);
 
 extern void* heap_manager_malloc(heap_manager_t* heap, uint32_t size, bool should_align, uint32_t *physical_address);
 extern void heap_manager_free(heap_manager_t* heap, uint32_t address);

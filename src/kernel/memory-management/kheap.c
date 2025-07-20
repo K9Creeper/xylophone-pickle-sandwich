@@ -29,7 +29,7 @@ bool kheap_pre_init(void){
 }
 
 bool kheap_init(void){
-    heap_manager_init(&kernel_heap_manager, 0xC0400000, 0xC0500000, 0xCFFFFF00, true, false, &kernel_paging_manager);
+    heap_manager_init(&kernel_heap_manager, 0xC0400000, 0xC0500000, 0xCFFFFF00, true, false, false, &kernel_paging_manager);
 
     return kernel_heap_manager.status == HEAP_INITIALIZED;
 }

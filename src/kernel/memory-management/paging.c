@@ -7,6 +7,8 @@
 #include <memory-management/paging-manager.h>
 #include <memory-management/heap-manager.h>
 
+#include <stdio.h>
+
 // heap-manager.c
 extern heap_manager_t *current_system_heap_manager;
 
@@ -20,9 +22,10 @@ paging_manager_t kernel_paging_manager;
 
 bool paging_init(void)
 {
+    page_directory_t* pd = heap_manager_malloc(&kernel_heap_manager, sizeof(page_directory_t), true, NULL);
     paging_manager_init(
         &kernel_paging_manager,
-        heap_manager_malloc(&kernel_heap_manager, sizeof(page_directory_t), true, NULL),
+        pd,
         &kernel_heap_manager,
         true
     );

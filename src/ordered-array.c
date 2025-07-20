@@ -82,6 +82,12 @@ void ordered_array_remove(ordered_array_t* ordered_array, uint32_t index){
     ordered_array->size--;
 }
 
+uint32_t ordered_array_size(ordered_array_t* ordered_array){
+    if(!ordered_array)
+        return (uint32_t)-1;
+    return ordered_array->size;
+}
+
 type_t ordered_array_get(ordered_array_t* ordered_array, uint32_t index){
     if (index >= ordered_array->max_size) {
         return NULL;

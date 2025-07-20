@@ -30,6 +30,8 @@ extern bool ordered_array_insert(ordered_array_t* ordered_array, type_t item);
 
 extern void ordered_array_remove(ordered_array_t* ordered_array, uint32_t index);
 
+extern uint32_t ordered_array_size(ordered_array_t* ordered_array);
+
 // "safer" data retreival.
 extern type_t ordered_array_get(ordered_array_t* ordered_array, uint32_t index);
 

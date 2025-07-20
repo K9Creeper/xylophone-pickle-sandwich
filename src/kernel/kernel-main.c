@@ -6,8 +6,10 @@
 #define sti() __asm__ volatile("sti")
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
 #include <multiboot2.h>
 
 static void setup_misc(void);
@@ -20,10 +22,33 @@ static void setup_early_heap(void);
 static void setup_paging(void);
 static void setup_heap(void);
 
+void test_heap_limit() {
+    size_t size = 1024; // Start with 1 KB
+    size_t step = 1024; // Increase by 1 KB
+    size_t total_allocated = 0;
+
+    while (true) {
+        void* ptr = malloc(size);
+        if (!ptr) {
+            printf("Allocation failed at size: %D bytes\n", (unsigned int)size);
+            break;
+        }
+
+        // Optionally write to the memory to ensure it’s valid
+        memset(ptr, 0xAA, size);
+
+        total_allocated += size;
+        printf("Allocated %D bytes, Total: %D KB\n", (unsigned int)size, (unsigned int)(total_allocated / 1024));
+        printf("Total heap used: %D KB\n", (unsigned int)(total_allocated / 1024));
+
+        size += step; // Optional: make this grow faster if needed
+    }
+
+    printf("Total heap used before failure: %D KB\n", (unsigned int)(total_allocated / 1024));
+}
+
 void kernel_main(uint32_t addr, uint32_t magic)
 {
-    cli();
-
     setup_misc();
 
     setup_descriptors();
@@ -37,6 +62,8 @@ void kernel_main(uint32_t addr, uint32_t magic)
     setup_heap();
 
     sti();
+
+    test_heap_limit();
 
 halt:
     for (;;)
@@ -77,18 +104,24 @@ void setup_bios32(void)
 #include "memory-management/kheap.h"
 void setup_early_heap(void)
 {
-    kheap_pre_init();
+    if(kheap_pre_init())
+        printf("Setup Early KHeap\n");
 }
 
 #include "memory-management/pmm.h"
 #include "memory-management/paging.h"
 void setup_paging(void)
 {
-    pmm_init(0x1000000);
-    paging_init();
+    // 32MB
+    if(pmm_init(0x1000000 * 2U)){
+        printf("Setup PMM\n");
+        if(paging_init())
+            printf("Setup Paging\n");
+    }
 }
 
 void setup_heap(void)
 {
-    kheap_init();
+    if(kheap_init())
+        printf("Setup KHeap\n");
 }

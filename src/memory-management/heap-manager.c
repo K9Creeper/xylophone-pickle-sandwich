@@ -16,56 +16,72 @@ static bool is_less_than(const type_t a, const type_t b)
 static int find_smallest_hole(heap_manager_t *heap, uint32_t size, bool should_align)
 {
     uint32_t i = 0;
-    for (; i < heap->heap_array.size; i++)
+
+    while (i < ordered_array_size(&heap->heap_array))
     {
-        heap_header_t *header = (heap->heap_array.array[i]);
+        heap_header_t *header = (heap_header_t *)ordered_array_get(&heap->heap_array, i);
+
         if (should_align)
         {
-            uint32_t location = (uint32_t)(header);
+            uint32_t location = (uint32_t)header;
             uint32_t hole_start = location + sizeof(heap_header_t);
-            uint32_t offset = 0;
+            int offset = 0;
 
-            if (((location + sizeof(heap_header_t)) & 0xFFFFF000) != 0)
+            if ((hole_start & (PAGE_SIZE - 1)) != 0)
             {
-                offset = PAGE_SIZE - (hole_start % PAGE_SIZE);
+                offset = PAGE_SIZE - (hole_start & (PAGE_SIZE - 1));
             }
 
-            uint32_t hole_size = header->size - offset;
+            int hole_size = (int)header->size - offset;
 
-            if (hole_size >= size)
+            if (hole_size >= (int)size)
+            {
                 break;
+            }
         }
+
         else if (header->size >= size)
+        {
             break;
+        }
+
+        i++;
     }
 
-    if (i == heap->heap_array.size)
+    if (i == ordered_array_size(&heap->heap_array))
         return -1;
 
     return i;
 }
 
-static void expand(heap_manager_t *heap, uint32_t new_size)
+static void expand(heap_manager_t *heap, uint32_t new_length)
 {
-    if (new_size == 0)
+    if (new_length == 0)
         return;
 
-    if ((new_size & 0xFFFFF000) != 0)
+    if ((new_length & (PAGE_SIZE - 1)) != 0)
     {
-        new_size &= 0xFFFFF000;
-        new_size += PAGE_SIZE;
+        new_length &= ~(PAGE_SIZE - 1);
+        new_length += PAGE_SIZE;
     }
 
-    paging_manager_allocate_range(heap->paging_manager, heap->end_address, heap->start_address + new_size, heap->is_supervisor, !heap->is_readonly);
+    if (heap->use_identity_mapping)
+    {
+        paging_manager_identity_allocate_range(heap->paging_manager, heap->end_address, heap->start_address + new_length, heap->is_supervisor, !heap->is_readonly);
+    }
+    else
+    {
+        paging_manager_allocate_range(heap->paging_manager, heap->end_address, heap->start_address + new_length, heap->is_supervisor, !heap->is_readonly);
+    }
 
-    heap->end_address = heap->start_address + new_size;
+    heap->end_address = heap->start_address + new_length;
 }
 
-static void contract(heap_manager_t *heap, uint32_t new_size)
+static uint32_t contract(heap_manager_t *heap, uint32_t new_size)
 {
-    if ((new_size & 0xFFFFF000) != 0)
+    if ((new_size & (PAGE_SIZE - 1)) != 0)
     {
-        new_size &= 0xFFFFF000;
+        new_size &= ~(PAGE_SIZE - 1);
         new_size += PAGE_SIZE;
     }
 
@@ -78,35 +94,41 @@ static void contract(heap_manager_t *heap, uint32_t new_size)
 
     for (uint32_t i = old_size - PAGE_SIZE; new_size < i; i -= PAGE_SIZE)
     {
-        paging_manager_free_single(heap->paging_manager, heap->start_address + i, true);
+        paging_manager_free_single(heap->paging_manager, i, true);
     }
 
     heap->end_address = heap->start_address + new_size;
+
+    return new_size;
 }
 
-static void *allocate(heap_manager_t *heap, uint32_t size, bool should_align)
+static void *allocate(heap_manager_t *heap, uint32_t size, bool should_align, uint8_t iterration)
 {
     uint32_t new_size = size + sizeof(heap_header_t) + sizeof(heap_footer_t);
-
     int i = find_smallest_hole(heap, new_size, should_align);
-
     if (i == -1)
     {
         uint32_t old_length = heap->end_address - heap->start_address;
         uint32_t old_end_address = heap->end_address;
+        uint32_t new_length = old_length + new_size;
+
+        if (heap->start_address + new_length > heap->max_end_address || iterration > 0)
+        {
+            return NULL;
+        }
 
         expand(heap, old_length + new_size);
 
-        uint32_t new_length = heap->end_address - heap->start_address;
+        new_length = heap->end_address - heap->start_address;
 
         i = 0;
         bool found = false;
         uint32_t idx = 0;
         uint32_t value = 0;
 
-        while (i < heap->heap_array.size)
+        while (i < ordered_array_size(&heap->heap_array))
         {
-            uint32_t tmp = (uint32_t)(heap->heap_array.array[i]);
+            uint32_t tmp = (uint32_t)(ordered_array_get(&heap->heap_array, i));
 
             if (tmp > value)
             {
@@ -128,11 +150,11 @@ static void *allocate(heap_manager_t *heap, uint32_t size, bool should_align)
             footer->header = header;
             footer->magic = HEAP_MAGIC;
 
-            ordered_array_insert(&heap->heap_array, header);
+            ordered_array_insert(&heap->heap_array, (type_t)header);
         }
         else
         {
-            heap_header_t *header = (heap_header_t *)(heap->heap_array.array[idx]);
+            heap_header_t *header = (heap_header_t *)(ordered_array_get(&heap->heap_array, idx));
             header->size += new_length - old_length;
 
             uint32_t footer_addr = (uint32_t)(header) + header->size - sizeof(heap_footer_t);
@@ -142,10 +164,10 @@ static void *allocate(heap_manager_t *heap, uint32_t size, bool should_align)
             footer->magic = HEAP_MAGIC;
         }
 
-        return allocate(heap, size, should_align);
+        return allocate(heap, size, should_align, ++iterration);
     }
 
-    heap_header_t *orig_hole_header = (heap_header_t *)(heap->heap_array.array[i]);
+    heap_header_t *orig_hole_header = (heap_header_t *)(ordered_array_get(&heap->heap_array, i));
     uint32_t orig_hole_pos = (uint32_t)(orig_hole_header);
     uint32_t orig_hole_size = orig_hole_header->size;
 
@@ -161,76 +183,71 @@ static void *allocate(heap_manager_t *heap, uint32_t size, bool should_align)
         uint32_t size2, footer_pos;
 
         size2 = PAGE_SIZE - (orig_hole_pos & 0xFFF) - sizeof(heap_header_t);
-        if (size2 < sizeof(heap_header_t) + sizeof(heap_footer_t))
-        {
-            // Skip alignment — not worth it
-        }
-        else
-        {
-            heap_header_t *hole_header = (heap_header_t *)(orig_hole_pos);
-            hole_header->size = size2;
-            hole_header->magic = HEAP_MAGIC;
-            hole_header->is_hole = true;
 
-            footer_pos = orig_hole_pos + size2 - sizeof(heap_footer_t);
-            heap_footer_t *hole_footer = (heap_footer_t *)(footer_pos);
-            hole_footer->header = hole_header;
-            hole_footer->magic = HEAP_MAGIC;
+        heap_header_t *hole_header = (heap_header_t *)(orig_hole_pos);
+        hole_header->size = size2;
+        hole_header->magic = HEAP_MAGIC;
+        hole_header->is_hole = true;
 
-            orig_hole_pos += size2;
-            orig_hole_size -= size2;
-        }
+        footer_pos = orig_hole_pos + size2 - sizeof(heap_footer_t);
+        heap_footer_t *hole_footer = (heap_footer_t *)footer_pos;
+        hole_footer->header = hole_header;
+        hole_footer->magic = HEAP_MAGIC;
+
+        orig_hole_pos += size2;
+        orig_hole_size -= size2;
     }
+    else
+        ordered_array_remove(&heap->heap_array, i);
 
-    ordered_array_remove(&heap->heap_array, i);
-
-    heap_header_t *block_header = (heap_header_t *)(orig_hole_pos);
+    heap_header_t *block_header = (heap_header_t *)orig_hole_pos;
     block_header->size = new_size;
     block_header->magic = HEAP_MAGIC;
     block_header->is_hole = false;
 
-    heap_footer_t *block_footer = (heap_footer_t *)(orig_hole_pos + new_size - sizeof(heap_footer_t));
+    heap_footer_t *block_footer = (heap_footer_t *)((uint32_t)orig_hole_pos + sizeof(heap_header_t) + size);
     block_footer->header = block_header;
     block_footer->magic = HEAP_MAGIC;
 
     if (orig_hole_size - new_size > 0)
     {
-        heap_header_t *hole_header = (heap_header_t *)(orig_hole_pos + new_size);
+        heap_header_t *hole_header = (heap_header_t *)(orig_hole_pos + sizeof(heap_header_t) + size + sizeof(heap_footer_t));
         hole_header->size = orig_hole_size - new_size;
         hole_header->magic = HEAP_MAGIC;
         hole_header->is_hole = true;
 
-        heap_footer_t *hole_footer = (heap_footer_t *)((uint32_t)hole_header + hole_header->size - sizeof(heap_footer_t));
+        heap_footer_t *hole_footer = (heap_footer_t *)((uint32_t)hole_header + orig_hole_size - new_size - sizeof(heap_footer_t));
 
-        if ((uint32_t)(hole_footer) < heap->end_address)
+        if ((uint32_t)hole_footer < heap->end_address)
         {
             hole_footer->header = hole_header;
             hole_footer->magic = HEAP_MAGIC;
         }
 
-        ordered_array_insert(&heap->heap_array, hole_header);
+        ordered_array_insert(&heap->heap_array, (type_t)hole_header);
     }
 
-    return (void *)((uint32_t)(block_header) + sizeof(heap_header_t));
+    return (void *)((uint32_t)block_header + sizeof(heap_header_t));
 }
 
-static void free_(heap_manager_t *heap, uint32_t address) {
-    if (!address)
+static void free_(heap_manager_t *heap, uint32_t address)
+{
+    if (!(void *)address)
         return;
 
-    heap_header_t *header = (heap_header_t*)(address - sizeof(heap_header_t));
-    heap_footer_t *footer = (heap_footer_t*)((uintptr_t)header + header->size - sizeof(heap_footer_t));
+    uint32_t i;
 
-    if (header->magic != HEAP_MAGIC || footer->magic != HEAP_MAGIC)
-        return;
+    heap_header_t *header = (heap_header_t *)(address - sizeof(heap_header_t));
+    heap_footer_t *footer = (heap_footer_t *)((uint32_t)header + header->size - sizeof(heap_footer_t));
 
     header->is_hole = true;
 
     bool should_add = true;
 
-    heap_footer_t *test_footer = (heap_footer_t*)((uintptr_t)header - sizeof(heap_footer_t));
+    heap_footer_t *test_footer = (heap_footer_t *)((uint32_t)header - sizeof(heap_footer_t));
 
-    if (test_footer->magic == HEAP_MAGIC && test_footer->header->is_hole) {
+    if (test_footer->magic == HEAP_MAGIC && test_footer->header->is_hole)
+    {
         uint32_t cache_size = header->size;
 
         header = test_footer->header;
@@ -241,51 +258,58 @@ static void free_(heap_manager_t *heap, uint32_t address) {
         should_add = false;
     }
 
-    heap_header_t *test_header = (heap_header_t*)(footer + 1);
+    heap_header_t *test_header = (heap_header_t *)(footer + sizeof(heap_footer_t));
 
-    if ((uintptr_t)test_header < heap->end_address &&
-        test_header->magic == HEAP_MAGIC && test_header->is_hole) {
-
+    if (test_header->magic == HEAP_MAGIC && test_header->is_hole)
+    {
         header->size += test_header->size;
 
-        heap_footer_t *test_footer = (heap_footer_t*)((uintptr_t)test_header + test_header->size - sizeof(heap_footer_t));
+        test_footer = (heap_footer_t *)((uint32_t)test_header + test_header->size - sizeof(heap_footer_t));
         footer = test_footer;
 
-        uint32_t i = 0;
-        while (i < heap->heap_array.size && heap->heap_array.array[i] != test_header)
+        i = 0;
+        while ((i < ordered_array_size(&heap->heap_array)) &&
+               (((void *)ordered_array_get(&heap->heap_array, i)) != (void *)test_header))
+        {
             i++;
+        }
 
-        if (i < heap->heap_array.size)
-            ordered_array_remove(&heap->heap_array, i);
+        ordered_array_remove(&heap->heap_array, i);
     }
 
-    if ((uintptr_t)footer + sizeof(heap_footer_t) == heap->end_address) {
+    if ((uint32_t)(footer) + sizeof(heap_footer_t) == heap->end_address)
+    {
         uint32_t old_length = heap->end_address - heap->start_address;
-        uint32_t new_length = (uintptr_t)header - heap->start_address;
+        uint32_t new_length = contract(heap, (uint32_t)header - heap->start_address);
 
-        contract(heap, new_length);
-
-        if (header->size > old_length - new_length) {
+        if (header->size - (old_length - new_length) > 0)
+        {
             header->size -= (old_length - new_length);
 
-            footer = (heap_footer_t*)((uintptr_t)header + header->size - sizeof(heap_footer_t));
+            footer = (heap_footer_t *)((uint32_t)header + header->size - sizeof(heap_footer_t));
 
             footer->header = header;
             footer->magic = HEAP_MAGIC;
-        } else {
-            uint32_t i = 0;
-            while (i < heap->heap_array.size && heap->heap_array.array[i] != test_header)
+        }
+        else
+        {
+            while ((i < ordered_array_size(&heap->heap_array)) && (((void *)ordered_array_get(&heap->heap_array, i)) != (void *)test_header))
+            {
                 i++;
+            }
 
-            if (i < heap->heap_array.size)
+            if (i < ordered_array_size(&heap->heap_array))
+            {
                 ordered_array_remove(&heap->heap_array, i);
+            }
         }
     }
 
     if (should_add)
-        ordered_array_insert(&heap->heap_array, header);
+    {
+        ordered_array_insert(&heap->heap_array, (type_t)header);
+    }
 }
-
 
 void heap_manager_pre_init(heap_manager_t *heap, uint32_t end)
 {
@@ -299,7 +323,7 @@ void heap_manager_pre_init(heap_manager_t *heap, uint32_t end)
     heap->status = HEAP_PRE_INITIALIZED;
 }
 
-void heap_manager_init(heap_manager_t *heap, uint32_t start_address, uint32_t end_address, uint32_t max_end_address, bool is_supervisor, bool is_readonly, paging_manager_t *paging_manager)
+void heap_manager_init(heap_manager_t *heap, uint32_t start_address, uint32_t end_address, uint32_t max_end_address, bool is_supervisor, bool is_readonly, bool use_identity_mapping, paging_manager_t *paging_manager)
 {
     if (!heap || !paging_manager || !paging_manager->is_initialized)
         return;
@@ -311,11 +335,19 @@ void heap_manager_init(heap_manager_t *heap, uint32_t start_address, uint32_t en
 
     heap->is_supervisor = is_supervisor;
     heap->is_readonly = is_readonly;
-
-    paging_manager_allocate_range(paging_manager, start_address, end_address, is_supervisor, !is_readonly);
+    heap->use_identity_mapping = use_identity_mapping;
+    
+    if (use_identity_mapping)
+    {
+        paging_manager_identity_allocate_range(paging_manager, start_address, end_address, is_supervisor, !is_readonly);
+    }
+    else
+    {
+        paging_manager_allocate_range(paging_manager, start_address, end_address, is_supervisor, !is_readonly);
+    }
 
     ordered_array_init(&heap->heap_array, HEAP_INDEX_SIZE, is_less_than);
-    ordered_array_place(&heap->heap_array, (void*)start_address);
+    ordered_array_place(&heap->heap_array, (void *)start_address);
 
     start_address += sizeof(void *) * HEAP_INDEX_SIZE;
 
@@ -329,7 +361,7 @@ void heap_manager_init(heap_manager_t *heap, uint32_t start_address, uint32_t en
     heap->end_address = end_address;
     heap->max_end_address = max_end_address;
 
-    heap_header_t *hole = (heap_header_t*)start_address;
+    heap_header_t *hole = (heap_header_t *)start_address;
     hole->size = end_address - start_address;
     hole->magic = HEAP_MAGIC;
     hole->is_hole = true;
@@ -346,14 +378,14 @@ void *heap_manager_malloc(heap_manager_t *heap, uint32_t size, bool should_align
 {
     if (heap->status == HEAP_INITIALIZED)
     {
-        uint32_t address = (uint32_t)allocate(heap, size, should_align);
+        uint32_t address = (uint32_t)allocate(heap, size, should_align, 0);
 
         if (physical_address)
         {
             *physical_address = paging_manager_get_physical_address(heap->paging_manager, address);
         }
 
-        return (void*)address;
+        return (void *)address;
     }
     else if (heap->status == HEAP_PRE_INITIALIZED)
     {
@@ -370,7 +402,7 @@ void *heap_manager_malloc(heap_manager_t *heap, uint32_t size, bool should_align
 
         heap->placement_address += size;
 
-        return (void*)base;
+        return (void *)base;
     }
 
     return NULL;
