@@ -1,8 +1,0 @@
-.vscode
-.bin
-
-debug-log.txt
-*.o
-*.bin
-
-image.iso
