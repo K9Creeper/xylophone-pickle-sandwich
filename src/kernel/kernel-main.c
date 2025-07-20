@@ -5,6 +5,8 @@
 #define cli() __asm__ volatile("cli")
 #define sti() __asm__ volatile("sti")
 
+#define get_esp(esp) __asm__ volatile("mov %%esp, %0" : "=r"(esp))
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -12,6 +14,9 @@
 #include <memory.h>
 #include <multiboot2.h>
 
+#include "misc-drivers/vga-terminal.h"
+
+// Wrappers
 static void setup_misc(void);
 
 static void setup_descriptors(void);
@@ -21,8 +26,6 @@ static void setup_bios32(void);
 static void setup_early_heap(void);
 static void setup_paging(void);
 static void setup_heap(void);
-
-#include "misc-drivers/vga-terminal.h"
 
 void kernel_main(uint32_t addr, uint32_t magic)
 {
@@ -59,17 +62,20 @@ void setup_misc(void)
 }
 
 #include "descriptors/global-descriptor-table.h"
+#include "descriptors/task-state-segment.h"
 #include "descriptors/interrupt-descriptor-table.h"
 
 void setup_descriptors(void)
 {
     kernel_global_descriptor_table_init();
     kernel_global_descriptor_table_install();
-    printf("Setup GDT\n");
+
+    uint32_t esp;
+    get_esp(esp);
+    kernel_task_state_segment_int(5, 0x10, esp);
 
     kernel_interrupt_descriptor_table_init();
     kernel_interrupt_descriptor_table_install();
-    printf("Setup IDT\n");
 }
 
 #include "bios32/bios32.h"
@@ -77,14 +83,12 @@ void setup_descriptors(void)
 void setup_bios32(void)
 {
     kernel_bios32_init();
-    printf("Setup Bios32\n");
 }
 
 #include "memory-management/kheap.h"
 void setup_early_heap(void)
 {
-    if(kheap_pre_init())
-        printf("Setup Early KHeap\n");
+    kheap_pre_init();
 }
 
 #include "memory-management/pmm.h"
@@ -93,14 +97,11 @@ void setup_paging(void)
 {
     // 32MB
     if(pmm_init(0x1000000 * 2U)){
-        printf("Setup PMM\n");
-        if(paging_init())
-            printf("Setup Paging\n");
+        paging_init();
     }
 }
 
 void setup_heap(void)
 {
-    if(kheap_init())
-        printf("Setup KHeap\n");
+    kheap_init();
 }
