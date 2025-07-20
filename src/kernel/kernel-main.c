@@ -22,30 +22,7 @@ static void setup_early_heap(void);
 static void setup_paging(void);
 static void setup_heap(void);
 
-void test_heap_limit() {
-    size_t size = 1024; // Start with 1 KB
-    size_t step = 1024; // Increase by 1 KB
-    size_t total_allocated = 0;
-
-    while (true) {
-        void* ptr = malloc(size);
-        if (!ptr) {
-            printf("Allocation failed at size: %D bytes\n", (unsigned int)size);
-            break;
-        }
-
-        // Optionally write to the memory to ensure it’s valid
-        memset(ptr, 0xAA, size);
-
-        total_allocated += size;
-        printf("Allocated %D bytes, Total: %D KB\n", (unsigned int)size, (unsigned int)(total_allocated / 1024));
-        printf("Total heap used: %D KB\n", (unsigned int)(total_allocated / 1024));
-
-        size += step; // Optional: make this grow faster if needed
-    }
-
-    printf("Total heap used before failure: %D KB\n", (unsigned int)(total_allocated / 1024));
-}
+#include "misc-drivers/vga-terminal.h"
 
 void kernel_main(uint32_t addr, uint32_t magic)
 {
@@ -63,7 +40,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     sti();
 
-    test_heap_limit();
+    vga_terminal_write_string("Hello!\n");
 
 halt:
     for (;;)
@@ -77,6 +54,8 @@ halt:
 void setup_misc(void)
 {
     kernel_misc_drivers_serial_com1_init();
+
+    vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_LIGHT_BLUE, VGA_TERMINAL_COLOR_DARK_GREY);
 }
 
 #include "descriptors/global-descriptor-table.h"
