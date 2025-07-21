@@ -20,6 +20,13 @@ void free(void* ptr){
     heap_manager_free(current_system_heap_manager, (uint32_t)ptr);
 }
 
+void* amalloc(uint32_t size){
+    if(!current_system_heap_manager)
+        return NULL;    
+
+    return heap_manager_malloc(current_system_heap_manager, size, true, NULL);
+}
+
 void* calloc(uint32_t n, uint32_t size) {
     uint32_t total = n * size;
     void* ptr = malloc(total);

@@ -14,6 +14,8 @@
 #include <memory.h>
 #include <multiboot2.h>
 
+#include <memory-spec.h>
+
 #include "misc-drivers/vga-terminal.h"
 
 // Wrappers
@@ -26,6 +28,10 @@ static void setup_bios32(void);
 static void setup_early_heap(void);
 static void setup_paging(void);
 static void setup_heap(void);
+
+static void setup_drivers(void);
+
+static void setup_scheduling(void);
 
 void kernel_main(uint32_t addr, uint32_t magic)
 {
@@ -41,9 +47,11 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     setup_heap();
 
+    setup_drivers();
+
     sti();
 
-    vga_terminal_write_string("Hello!\n");
+    setup_scheduling();
 
 halt:
     for (;;)
@@ -95,8 +103,7 @@ void setup_early_heap(void)
 #include "memory-management/paging.h"
 void setup_paging(void)
 {
-    // 32MB
-    if(pmm_init(0x1000000 * 2U)){
+    if(pmm_init(PHYSICAL_MEMORY_SIZE)){
         paging_init();
     }
 }
@@ -104,4 +111,33 @@ void setup_paging(void)
 void setup_heap(void)
 {
     kheap_init();
+}
+
+#include "drivers/pit/pit.h"
+void setup_drivers(void){
+    pit_init(50);
+}
+
+#include <scheduling/scheduling.h>
+
+void task1(void){
+    while(true){
+
+    }
+    scheduling_exit_task();
+}
+
+void task2(void){
+    while(true){
+        
+    }
+    scheduling_exit_task();
+}
+
+void setup_scheduling(void){
+    scheduling_init();
+    scheduling_install();
+
+    scheduling_create_task("ktask1", task1, true, false);
+    scheduling_create_task("ktask2", task2, true, false);
 }

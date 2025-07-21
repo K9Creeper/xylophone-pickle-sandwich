@@ -16,12 +16,13 @@
 
 void (*rebased__bios32_helper)(void) = (void(*)(void))(REBASED_OFFSET);
 
-// bios32.s
+// bios32.asm
 extern void _bios32_helper(void);
 extern void _bios32_helper_end(void);
 
 #define REBASE(x) (void*)(REBASED_OFFSET + (uint32_t)(x) - (uint32_t)(_bios32_helper))
 
+// bios32.asm
 extern void *_gdt_entries;
 extern void *_gdt_ptr;
 extern void *_idt_ptr;

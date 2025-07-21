@@ -9,6 +9,8 @@
 #include <memory-management/physical-memory-manager.h>
 #include <memory-management/heap-manager.h>
 
+#include <stdio.h>
+
 // boot.s
 extern page_directory_t *boot_page_directory;
 
@@ -123,7 +125,7 @@ static void allocate_page(page_directory_t *page_directory, uint32_t virtual_add
                 {
                     // Panic! PMM Block Allocation Failed
                     system_physical_memory_manager.failed = true;
-                    //printf("PMM Failed Allocating Block %d\n", t);
+                    printf("PMM Failed Allocating Block %d\n", t);
                     return;
                 }
         }
@@ -180,7 +182,35 @@ void paging_manager_init(paging_manager_t *paging_manager, page_directory_t *pag
     paging_manager->is_enabled = false;
 }
 
-#include <stdio.h>
+void paging_manager_swap_system_page_directory(paging_manager_t* paging_manager, uint32_t cr3, bool is_physical){
+    if (!paging_manager || !paging_manager->is_initialized)
+        return;
+        
+     uint32_t t;
+
+    if (cr3)
+    {
+        if (!is_physical)
+        {
+            t = virtual_2_physical(boot_page_directory, cr3);
+        }
+        else
+            t = cr3;
+    }
+    else
+    {
+        if (!is_physical)
+            t = virtual_2_physical(boot_page_directory, (uint32_t)paging_manager->page_directory);
+        else
+            t = (uint32_t)(paging_manager->page_directory);
+    }
+    
+    __asm__ volatile("mov %0, %%cr3" ::"r"(t));
+
+    current_system_paging_manager = paging_manager;
+    current_system_page_directory = paging_manager->page_directory;
+    current_system_heap_manager = paging_manager->heap_manager;
+}
 
 void paging_manager_set_as_system_paging(paging_manager_t *paging_manager, bool is_physical)
 {
@@ -241,7 +271,7 @@ void paging_manager_identity_allocate_range(paging_manager_t *paging_manager, ui
 {
     if (!paging_manager || !paging_manager->is_initialized)
         return;
-    for (; start_address < end_address; start_address += PAGE_SIZE)
+    for (; start_address < end_address + PAGE_SIZE; start_address += PAGE_SIZE)
     {
         paging_manager_identity_allocate_single(paging_manager, start_address, is_kernel, is_writeable);
     }
@@ -258,7 +288,8 @@ void paging_manager_allocate_range(paging_manager_t *paging_manager, uint32_t st
 {
     if (!paging_manager || !paging_manager->is_initialized)
         return;
-    for (; start_address < end_address; start_address += PAGE_SIZE)
+
+    for (; start_address < end_address + PAGE_SIZE; start_address += PAGE_SIZE)
     {
         paging_manager_allocate_single(paging_manager, start_address, is_kernel, is_writeable);
     }
@@ -275,7 +306,7 @@ void paging_manager_free_range(paging_manager_t *paging_manager, uint32_t start_
 {
     if (!paging_manager || !paging_manager->is_initialized)
         return;
-    for (; start_address < end_address; start_address += PAGE_SIZE)
+    for (; start_address < end_address + PAGE_SIZE; start_address += PAGE_SIZE)
     {
         paging_manager_free_single(paging_manager, start_address, should_free);
     }

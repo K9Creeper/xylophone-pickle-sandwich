@@ -11,25 +11,29 @@
 static void *isrs_handles[KERNEL_INTERRUPT_SERVICE_MAX_HANNDLE_COUNT];
 static void *isrs_fault_handles[KERNEL_INTERRUPT_SERVICE_FAULT_MAX_HANNDLE_COUNT];
 
-void kernel_interrupt_service_set_handle(uint16_t idx, void* handle){
+void kernel_interrupt_service_set_handle(uint16_t idx, kernel_interrupt_service_handle_t handle)
+{
     if (idx >= 0 && idx < KERNEL_INTERRUPT_SERVICE_MAX_HANNDLE_COUNT)
     {
-        isrs_handles[idx] = handle;
+        isrs_handles[idx] = (void *)handle;
     }
 }
 
-void kernel_interrupt_service_remove_handle(uint16_t idx){
+void kernel_interrupt_service_remove_handle(uint16_t idx)
+{
     kernel_interrupt_service_set_handle(idx, NULL);
 }
 
-void kernel_interrupt_service_set_fault_handle(uint16_t idx, void* handle){
+void kernel_interrupt_service_set_fault_handle(uint16_t idx, kernel_interrupt_service_fault_handle_t handle)
+{
     if (idx >= 0 && idx < KERNEL_INTERRUPT_SERVICE_FAULT_MAX_HANNDLE_COUNT)
     {
-        isrs_fault_handles[idx] = handle;
+        isrs_fault_handles[idx] = (void *)handle;
     }
 }
 
-void kernel_interrupt_service_remove_fault_handle(uint16_t idx){
+void kernel_interrupt_service_remove_fault_handle(uint16_t idx)
+{
     kernel_interrupt_service_set_fault_handle(idx, NULL);
 }
 
@@ -76,13 +80,68 @@ void isr_handler(registers_t r)
     {
         printf("Fault %D\n", r.int_no);
 
+        switch (r.int_no)
+        {
+        case 14U:
+        {
+            uint32_t faulting_address;
+
+            asm volatile("mov %%cr2, %0" : "=r"(faulting_address));
+
+            // The error code gives us details of what happened
+            uint32_t present = r.err_code & 0x1;
+            uint32_t rw = r.err_code & 0x2;
+            uint32_t user = r.err_code & 0x4;
+            uint32_t reserved = r.err_code & 0x8;
+            uint32_t inst_fetch = r.err_code & 0x10;
+
+            printf("Possible causes: [ ");
+            if (!present)
+                printf("Page not present ");
+            if (rw)
+                printf("Page is read only ");
+            if (user)
+                printf("Page is read only ");
+            if (reserved)
+                printf("Overwrote reserved bits ");
+            if (inst_fetch)
+                printf("Instruction fetch ");
+            printf("] at ");
+            printf("0x%X\n", faulting_address);
+        }
+        break;
+        }
+
+        printf(
+            "ds:      0x%X\n"
+            "edi:     0x%X\n"
+            "esi:     0x%X\n"
+            "ebp:     0x%X\n"
+            "esp:     0x%X\n"
+            "ebx:     0x%X\n"
+            "edx:     0x%X\n"
+            "ecx:     0x%X\n"
+            "eax:     0x%X\n"
+            "int_no:  0x%X\n"
+            "err_code:0x%X\n"
+            "eip:     0x%X\n"
+            "cs:      0x%X\n"
+            "eflags:  0x%X\n"
+            "useresp: 0x%X\n"
+            "ss:      0x%X\n",
+            r.ds, r.edi, r.esi, r.ebp, r.esp,
+            r.ebx, r.edx, r.ecx, r.eax, r.int_no,
+            r.err_code, r.eip, r.cs, r.eflags, r.useresp,
+            r.ss);
+
         kernel_interrupt_service_handle_t handler = (kernel_interrupt_service_handle_t)(isrs_fault_handles[r.int_no]);
         if (handler)
         {
             handler(&r);
         }
 
-        for(;;){
+        for (;;)
+        {
             asm volatile("hlt");
         }
     }

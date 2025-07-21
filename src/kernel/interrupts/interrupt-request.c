@@ -10,11 +10,11 @@
 
 static void *irq_handles[KERNEL_INTERRUPT_REQUEST_MAX_HANNDLE_COUNT];
 
-void kernel_interrupt_request_set_handle(uint16_t idx, void *handle)
+void kernel_interrupt_request_set_handle(uint16_t idx, kernel_interrupt_request_handle_t handle)
 {
     if (idx >= 0 && idx < KERNEL_INTERRUPT_REQUEST_MAX_HANNDLE_COUNT)
     {
-        irq_handles[idx] = handle;
+        irq_handles[idx] = (void*)handle;
     }
 }
 
