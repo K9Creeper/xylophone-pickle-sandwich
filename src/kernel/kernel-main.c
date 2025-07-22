@@ -115,7 +115,7 @@ void setup_heap(void)
 
 #include "drivers/pit/pit.h"
 void setup_drivers(void){
-    pit_init(50);
+    pit_init(100);
 }
 
 #include <scheduling/scheduling.h>

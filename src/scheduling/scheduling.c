@@ -44,47 +44,47 @@ static bool is_priority_task(const type_t a, const type_t b)
 static void switch_to_task(task_t *next)
 {
     curr_task = next;
-    if (curr_task->paging_manager && curr_task->heap_manager && curr_task->paging_manager->page_directory)
+    if (!(curr_task->paging_manager && curr_task->heap_manager && curr_task->paging_manager->page_directory))
+        return;
+
+    paging_manager_swap_system_page_directory(curr_task->paging_manager, curr_task->physical_cr3, true);
+
+    if (curr_task->status == TASK_STATUS_CREATED && curr_task->mode == TASK_MODE_USER)
     {
-        paging_manager_swap_system_page_directory(curr_task->paging_manager, curr_task->physical_cr3, true);
-
-        if (curr_task->status == TASK_STATUS_CREATED && curr_task->mode == TASK_MODE_USER)
+        if (!curr_task->is_thread)
         {
-            if (!curr_task->is_thread)
-            {
-                heap_manager_pre_init(curr_task->heap_manager, 0x40000000);
-                printf("Pre Heap\n");
-            }
-
-            curr_task->paging_manager->heap_manager = curr_task->heap_manager;
-            printf("Correct Heap\n");
-
-            if (!curr_task->is_thread)
-            {
-                heap_manager_init(curr_task->heap_manager, 0x40400000, 0x40500000, 0x4FFFFF00,
-                                  false, false, false, curr_task->paging_manager);
-                printf("Finish Heap\n");
-            }
-
-            paging_manager_allocate_range(curr_task->paging_manager, 0x70000000, 0x70500000, false, true);
-            printf("Stack it\n");
+            heap_manager_pre_init(curr_task->heap_manager, 0x40000000);
+            printf("Pre Heap\n");
         }
-        else if (curr_task->status == TASK_STATUS_CREATED)
+
+        curr_task->paging_manager->heap_manager = curr_task->heap_manager;
+        printf("Correct Heap\n");
+
+        if (!curr_task->is_thread)
         {
-            if (!curr_task->is_thread)
-            {
-                heap_manager_pre_init(curr_task->heap_manager, 0xD1000000);
-            }
-
-            curr_task->paging_manager->heap_manager = curr_task->heap_manager;
-
-            if (!curr_task->is_thread)
-            {                                                                       
-                heap_manager_init(curr_task->heap_manager, 0xD1400000, 0xD1500000, 0xDFFFFF00, true, false, false, curr_task->paging_manager);
-            }
-
-            paging_manager_allocate_range(curr_task->paging_manager, 0xD0000000, 0xD0040000, true, true);
+            heap_manager_init(curr_task->heap_manager, 0x40400000, 0x40500000, 0x4FFFFF00,
+                              false, false, false, curr_task->paging_manager);
+            printf("Finish Heap\n");
         }
+
+        paging_manager_allocate_range(curr_task->paging_manager, 0x70000000, 0x70500000, false, true);
+        printf("Stack it\n");
+    }
+    else if (curr_task->status == TASK_STATUS_CREATED)
+    {
+        if (!curr_task->is_thread)
+        {
+            heap_manager_pre_init(curr_task->heap_manager, 0xD1000000);
+        }
+
+        curr_task->paging_manager->heap_manager = curr_task->heap_manager;
+
+        if (!curr_task->is_thread)
+        {
+            heap_manager_init(curr_task->heap_manager, 0xD1400000, 0xD1500000, 0xDFFFFF00, true, false, false, curr_task->paging_manager);
+        }
+
+        paging_manager_allocate_range(curr_task->paging_manager, 0xD0000000, 0xD0040000, true, true);
     }
 
     prev_task = curr_task;
@@ -121,6 +121,8 @@ static void scheduler(registers_t *regs, uint32_t tick)
         memcpy((uint8_t *)(&prev_task->state), (uint8_t *)regs, sizeof(registers_t));
         if (prev_task->mode == TASK_MODE_USER)
             prev_task->state.esp = prev_task->state.useresp;
+        
+        __asm__ volatile("mov %%cr3, %0" : "=r"(prev_task->physical_cr3));
     }
 
     static uint32_t prevIdx = 0;
@@ -159,7 +161,7 @@ static void scheduler(registers_t *regs, uint32_t tick)
 
     if (next && next != curr_task)
     {
-        printf("Switching to %s\n", next->name);
+        // printf("Switching to %s\n", next->name);
         switch_to_task(next);
     }
 }
@@ -191,13 +193,15 @@ void scheduling_add_task(task_t *task)
     ordered_array_insert(&task_list, (type_t)task);
 }
 
-void scheduling_exit_task(void){
-    if(!curr_task)
+void scheduling_exit_task(void)
+{
+    if (!curr_task)
         return;
 
     curr_task->status = TASK_STATUS_ZOMBIE;
 
-    for(;;);
+    for (;;)
+        ;
 }
 
 static void clone_paging_directory(page_directory_t *dst, page_directory_t *src)
@@ -219,7 +223,7 @@ void scheduling_create_task(const char *name, void *routine, bool is_kernel, boo
     if (!is_creator_kernel && is_kernel)
         return;
 
-    task_t* t = (task_t *)(malloc(sizeof(task_t)));
+    task_t *t = (task_t *)(malloc(sizeof(task_t)));
     memset((uint8_t *)(t->name), 0, 512);
     memcpy((uint8_t *)(t->name), (const uint8_t *)(name), strlen(name));
 
@@ -267,6 +271,6 @@ void scheduling_create_task(const char *name, void *routine, bool is_kernel, boo
     {
         t->state.esp = t->state.ebp = 0xD0040000;
     }
-    
+
     scheduling_add_task(t);
 }
