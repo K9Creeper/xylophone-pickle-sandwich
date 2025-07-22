@@ -115,19 +115,21 @@ void setup_heap(void)
 
 #include "drivers/pit/pit.h"
 void setup_drivers(void){
-    pit_init(100);
+    pit_init(500);
 }
 
 #include <scheduling/scheduling.h>
 
 void task1(void){
+    printf("Hi from task1\n");
     while(true){
-
+        
     }
     scheduling_exit_task();
 }
 
 void task2(void){
+    printf("Hi from task2\n");
     while(true){
         
     }
@@ -140,4 +142,6 @@ void setup_scheduling(void){
 
     scheduling_create_task("ktask1", task1, true, false);
     scheduling_create_task("ktask2", task2, true, false);
+
+    
 }

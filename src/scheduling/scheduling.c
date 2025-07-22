@@ -87,21 +87,39 @@ static void switch_to_task(task_t *next)
         paging_manager_allocate_range(curr_task->paging_manager, 0xD0000000, 0xD0040000, true, true);
     }
 
-    prev_task = curr_task;
-
     curr_task->status = TASK_STATUS_RUNNING;
+
     if (curr_task->mode == TASK_MODE_USER)
     {
         _context_switch_user(&curr_task->state);
+        prev_task = curr_task;
     }
     else
     {
-        _context_switch_kernel(&curr_task->state);
+        _context_switch_kernel(&curr_task->state); 
+        prev_task = curr_task;
+    }
+    
+}
+
+int IRQ_disable_counter = 0;
+
+static void lock_scheduler(void) {
+    __asm__ volatile("cli");
+    IRQ_disable_counter++;
+}
+
+static void unlock_scheduler(void) {
+    IRQ_disable_counter--;
+    if(IRQ_disable_counter == 0) {
+        __asm__ volatile("sti");
     }
 }
 
+// pit called
 static void scheduler(registers_t *regs, uint32_t tick)
 {
+    lock_scheduler();
     if (to_delete_task)
     {
         if (prev_task == to_delete_task)
@@ -121,8 +139,6 @@ static void scheduler(registers_t *regs, uint32_t tick)
         memcpy((uint8_t *)(&prev_task->state), (uint8_t *)regs, sizeof(registers_t));
         if (prev_task->mode == TASK_MODE_USER)
             prev_task->state.esp = prev_task->state.useresp;
-        
-        __asm__ volatile("mov %%cr3, %0" : "=r"(prev_task->physical_cr3));
     }
 
     static uint32_t prevIdx = 0;
@@ -164,6 +180,7 @@ static void scheduler(registers_t *regs, uint32_t tick)
         // printf("Switching to %s\n", next->name);
         switch_to_task(next);
     }
+    unlock_scheduler();
 }
 
 void scheduling_init(void)
@@ -200,8 +217,7 @@ void scheduling_exit_task(void)
 
     curr_task->status = TASK_STATUS_ZOMBIE;
 
-    for (;;)
-        ;
+    for (;;);
 }
 
 static void clone_paging_directory(page_directory_t *dst, page_directory_t *src)
@@ -254,6 +270,8 @@ void scheduling_create_task(const char *name, void *routine, bool is_kernel, boo
     t->physical_cr3 = paging_manager_get_physical_address(current_system_paging_manager, (uint32_t)t->paging_manager->page_directory);
 
     // So, there is an issue here for USERMODE....it can't access this.
+    // I should do something, about this...limit access to specific parts in the kernel space.
+    // ^^ this isn't the right way to do things, but....i don't really care rn
     clone_paging_directory(t->paging_manager->page_directory, current_system_paging_manager->page_directory);
 
     if (!is_kernel)
