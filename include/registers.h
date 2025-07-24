@@ -9,27 +9,26 @@
 
 typedef struct registers_s
 {
-    uint32_t ds;
+    uint32_t ds; // 0
 
-    uint32_t edi;
-    uint32_t esi;
-    uint32_t ebp;
-    uint32_t esp;
-    uint32_t ebx;
-    uint32_t edx;
-    uint32_t ecx;
-    uint32_t eax;
+    uint32_t edi, // 4
+        esi,      // 8
+        ebp,      // 12
+        esp,      // 16
+        ebx,      // 20
+        edx,      // 24
+        ecx,      // 28
+        eax;      // 32
 
-    uint32_t int_no;
-    uint32_t err_code;
+    uint32_t int_no, // 36
+        err_code;    // 40
 
-    uint32_t eip;
-    uint32_t cs;
-    uint32_t eflags;
-    uint32_t useresp;
-    uint32_t ss;
+    uint32_t eip, // 44
+        cs,       // 48
+        eflags,   // 52
+        useresp,  // 56
+        ss;       // 60
 } registers_t;
-
 
 typedef struct registers16_s
 {

@@ -68,7 +68,7 @@ cCompile(){
         output_file="${BUILD_BIN_PATH}/GCC_${relative_path//\//_}_$filename.o"
 
         echo -e "GCC: Compiling \033[1m$file\033[0m to $output_file"
-        $TARGET-gcc -c "$file" -o "$output_file" -std=gnu99 -ffreestanding -O2 $INCLUDES
+        $TARGET-gcc -c "$file" -o "$output_file" -std=gnu11 -ffreestanding -O2 $INCLUDES
         if ! [ -f "$output_file" ]; then
             export COMP_ERROR="1"
         fi

@@ -1,5 +1,7 @@
+<h1> Extensions </h1>
+  <p>Asuming you have WSL and are running WSL (after doing all the building for the cross-compiler), you also need to install the "WSL" extension & "Remote Development" extension in VS-Code.</p>
+
 <h2>Opening in VS-Code (If you installed the project directory on Windows, not WSL)</h2>
-<p>Asuming you have WSL and are running WSL (after doing all the building for the cross-compiler), you also need to install the WSL extensions in VS-Code.</p>
 <p>Once installed, you need to open the project directory. There should be a new icon, on the side panel (after you've installed the extension(s)).</p>
 <ul>
   <li>Open the panel, and click on to your WSL machine.</li>

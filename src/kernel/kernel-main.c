@@ -39,7 +39,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     setup_descriptors();
 
-    setup_bios32();
+    // setup_bios32();
 
     setup_early_heap();
 
@@ -51,7 +51,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     sti();
 
-    setup_scheduling();
+    vga_terminal_write_string("Hello!\nI hope you are having a wonderful day\n");
 
 halt:
     for (;;)
@@ -103,7 +103,8 @@ void setup_early_heap(void)
 #include "memory-management/paging.h"
 void setup_paging(void)
 {
-    if(pmm_init(PHYSICAL_MEMORY_SIZE)){
+    if (pmm_init(PHYSICAL_MEMORY_SIZE))
+    {
         paging_init();
     }
 }
@@ -114,34 +115,7 @@ void setup_heap(void)
 }
 
 #include "drivers/pit/pit.h"
-void setup_drivers(void){
+void setup_drivers(void)
+{
     pit_init(500);
-}
-
-#include <scheduling/scheduling.h>
-
-void task1(void){
-    printf("Hi from task1\n");
-    while(true){
-        
-    }
-    scheduling_exit_task();
-}
-
-void task2(void){
-    printf("Hi from task2\n");
-    while(true){
-        
-    }
-    scheduling_exit_task();
-}
-
-void setup_scheduling(void){
-    scheduling_init();
-    scheduling_install();
-
-    scheduling_create_task("ktask1", task1, true, false);
-    scheduling_create_task("ktask2", task2, true, false);
-
-    
 }
