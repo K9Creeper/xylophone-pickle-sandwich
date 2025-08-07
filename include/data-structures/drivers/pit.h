@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <registers.h>
 
-typedef void (*pit_handle_t)(registers_t*, uint32_t);
+typedef int (*pit_handle_t)(registers_t*, uint32_t);
 
 typedef struct pit_s{
     bool is_initialized;

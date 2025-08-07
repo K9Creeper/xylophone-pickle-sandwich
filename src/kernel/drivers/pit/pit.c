@@ -11,15 +11,16 @@
 
 static pit_t system_pit;
 
-static void* handles[PIT_HANDLE_MAX_COUNT];
+static void* s_handle;
 
 static void timer_handle(registers_t* regs){
     system_pit.ticks++;
 
-    for(uint8_t i = 0; i < PIT_HANDLE_MAX_COUNT; i++)
-    {
-        if(handles[i]){
-            ((pit_handle_t)(handles[i]))(regs, system_pit.ticks);
+
+    if(s_handle != NULL){
+        if((((pit_handle_t)(s_handle))(regs, system_pit.ticks)))
+        {
+                // Bad..
         }
     }
 }
@@ -28,6 +29,8 @@ void pit_init(uint16_t hz){
     if(system_pit.is_initialized)
         return;
     
+    s_handle = NULL;
+
     pit_set_frequency(hz);
     system_pit.ticks = 0;
     kernel_interrupt_request_set_handle(0, timer_handle);
@@ -37,29 +40,28 @@ void pit_init(uint16_t hz){
 void pit_set_frequency(uint16_t hz){
     system_pit.hz_frequency = hz;
 
-    uint16_t d = 1193180 / hz;
+    uint32_t d = 1193180U / hz;
 
     outportb(0x43, 0x36);
-    outportb(0x40, d & 0xFF);
-    outportb(0x40, (d >> 8) & 0xFF);
+
+    outportb(0x40, (uint8_t)(d & 0xFF));
+    outportb(0x40, (uint8_t)((d >> 8) & 0xFF));
 }
 
-int pit_add_handle(pit_handle_t handle){
+void pit_add_handle(pit_handle_t handle){
     if(!system_pit.is_initialized)
-        return -1;
+        return;
 
-    for(uint8_t i = 0; i < 16; i++)
-        if(!handles[i]){
-            handles[i] = (void*)handle;
-            return i;
-        }
-    return -1;
+    s_handle = (void*)handle;
 }
 
-void pit_remove_handle(int idx){
+void pit_remove_handle(void){
     if(!system_pit.is_initialized)
         return;
         
-    if(idx >= 0 && idx < PIT_HANDLE_MAX_COUNT)
-        handles[idx] = NULL; 
+    s_handle = NULL;
+}
+
+uint32_t pit_get_tick(void){
+    return system_pit.ticks;
 }
