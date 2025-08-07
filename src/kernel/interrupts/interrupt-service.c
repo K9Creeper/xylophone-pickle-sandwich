@@ -24,11 +24,11 @@ void kernel_interrupt_service_remove_handle(uint16_t idx)
     kernel_interrupt_service_set_handle(idx, NULL);
 }
 
-void kernel_interrupt_service_set_fault_handle(uint16_t idx, kernel_interrupt_service_fault_handle_t handle)
+void kernel_interrupt_service_set_fault_handle(uint16_t fault_num, kernel_interrupt_service_fault_handle_t handle)
 {
-    if (idx >= 0 && idx < KERNEL_INTERRUPT_SERVICE_FAULT_MAX_HANNDLE_COUNT)
+    if (fault_num >= 0 && fault_num < KERNEL_INTERRUPT_SERVICE_FAULT_MAX_HANNDLE_COUNT)
     {
-        isrs_fault_handles[idx] = (void *)handle;
+        isrs_fault_handles[fault_num] = (void *)handle;
     }
 }
 
@@ -81,38 +81,6 @@ void isr_handler(registers_t r)
     if (r.interrupt < 32)
     {
         printf("Fault %D\n", r.interrupt);
-
-        switch (r.interrupt)
-        {
-        case 14U:
-        {
-            uint32_t faulting_address;
-
-            asm volatile("mov %%cr2, %0" : "=r"(faulting_address));
-
-            // The error code gives us details of what happened
-            uint32_t present = r.error & 0x1;
-            uint32_t rw = r.error & 0x2;
-            uint32_t user = r.error & 0x4;
-            uint32_t reserved = r.error & 0x8;
-            uint32_t inst_fetch = r.error & 0x10;
-
-            printf("Possible causes: [ ");
-            if (!present)
-                printf("Page not present ");
-            if (rw)
-                printf("Page is read only ");
-            if (user)
-                printf("Page is read only ");
-            if (reserved)
-                printf("Overwrote reserved bits ");
-            if (inst_fetch)
-                printf("Instruction fetch ");
-            printf("] at ");
-            printf("0x%X\n", faulting_address);
-        }
-        break;
-        }
 
         printf(
             "ds:      0x%X\n"

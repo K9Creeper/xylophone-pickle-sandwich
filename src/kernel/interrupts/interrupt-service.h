@@ -16,7 +16,7 @@
 extern void kernel_interrupt_service_set_handle(uint16_t idx, kernel_interrupt_service_handle_t handle);
 extern void kernel_interrupt_service_remove_handle(uint16_t idx);
 
-extern void kernel_interrupt_service_set_fault_handle(uint16_t idx, kernel_interrupt_service_fault_handle_t handle);
-extern void kernel_interrupt_service_remove_fault_handle(uint16_t idx);
+extern void kernel_interrupt_service_set_fault_handle(uint16_t fault_num, kernel_interrupt_service_fault_handle_t handle);
+extern void kernel_interrupt_service_remove_fault_handle(uint16_t fault_num);
 
 #endif
