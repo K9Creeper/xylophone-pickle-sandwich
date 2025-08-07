@@ -82,28 +82,6 @@ void isr_handler(registers_t r)
     {
         printf("Fault %D\n", r.interrupt);
 
-        printf(
-            "ds:      0x%X\n"
-            "edi:     0x%X\n"
-            "esi:     0x%X\n"
-            "ebp:     0x%X\n"
-            "esp:     0x%X\n"
-            "ebx:     0x%X\n"
-            "edx:     0x%X\n"
-            "ecx:     0x%X\n"
-            "eax:     0x%X\n"
-            "int_no:  0x%X\n"
-            "err_code:0x%X\n"
-            "eip:     0x%X\n"
-            "cs:      0x%X\n"
-            "eflags:  0x%X\n"
-            "useresp: 0x%X\n"
-            "ss:      0x%X\n",
-            r.ds, r.edi, r.esi, r.ebp, r.esp,
-            r.ebx, r.edx, r.ecx, r.eax, r.interrupt,
-            r.error, r.eip, r.cs, r.eflags, r.usermode_esp,
-            r.usermode_ss);
-
         kernel_interrupt_service_handle_t handler = (kernel_interrupt_service_handle_t)(isrs_fault_handles[r.interrupt]);
         if (handler)
         {
