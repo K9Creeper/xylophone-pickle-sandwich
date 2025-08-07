@@ -71,16 +71,18 @@ extern void isr29();
 extern void isr30();
 extern void isr31();
 
+extern void isr128();
+
 // ../descriptors/interrupt-descriptor-table.c
 extern void kernel_interrupt_descriptor_set_gate(uint8_t num, uint32_t base, uint16_t selector, uint8_t flags);
 
 void isr_handler(registers_t r)
 {
-    if (r.int_no < 32)
+    if (r.interrupt < 32)
     {
-        printf("Fault %D\n", r.int_no);
+        printf("Fault %D\n", r.interrupt);
 
-        switch (r.int_no)
+        switch (r.interrupt)
         {
         case 14U:
         {
@@ -89,11 +91,11 @@ void isr_handler(registers_t r)
             asm volatile("mov %%cr2, %0" : "=r"(faulting_address));
 
             // The error code gives us details of what happened
-            uint32_t present = r.err_code & 0x1;
-            uint32_t rw = r.err_code & 0x2;
-            uint32_t user = r.err_code & 0x4;
-            uint32_t reserved = r.err_code & 0x8;
-            uint32_t inst_fetch = r.err_code & 0x10;
+            uint32_t present = r.error & 0x1;
+            uint32_t rw = r.error & 0x2;
+            uint32_t user = r.error & 0x4;
+            uint32_t reserved = r.error & 0x8;
+            uint32_t inst_fetch = r.error & 0x10;
 
             printf("Possible causes: [ ");
             if (!present)
@@ -130,11 +132,11 @@ void isr_handler(registers_t r)
             "useresp: 0x%X\n"
             "ss:      0x%X\n",
             r.ds, r.edi, r.esi, r.ebp, r.esp,
-            r.ebx, r.edx, r.ecx, r.eax, r.int_no,
-            r.err_code, r.eip, r.cs, r.eflags, r.useresp,
-            r.ss);
+            r.ebx, r.edx, r.ecx, r.eax, r.interrupt,
+            r.error, r.eip, r.cs, r.eflags, r.usermode_esp,
+            r.usermode_ss);
 
-        kernel_interrupt_service_handle_t handler = (kernel_interrupt_service_handle_t)(isrs_fault_handles[r.int_no]);
+        kernel_interrupt_service_handle_t handler = (kernel_interrupt_service_handle_t)(isrs_fault_handles[r.interrupt]);
         if (handler)
         {
             handler(&r);
@@ -146,7 +148,7 @@ void isr_handler(registers_t r)
         }
     }
 
-    kernel_interrupt_service_fault_handle_t handler = (kernel_interrupt_service_fault_handle_t)(isrs_handles[r.int_no]);
+    kernel_interrupt_service_fault_handle_t handler = (kernel_interrupt_service_fault_handle_t)(isrs_handles[r.interrupt]);
     if (handler)
     {
         handler(&r);
@@ -187,4 +189,7 @@ void kernel_interrupt_service_add_gates(void)
     kernel_interrupt_descriptor_set_gate(29, (uint32_t)(isr29), 0x08, 0x8E);
     kernel_interrupt_descriptor_set_gate(30, (uint32_t)(isr30), 0x08, 0x8E);
     kernel_interrupt_descriptor_set_gate(31, (uint32_t)(isr31), 0x08, 0x8E);
+
+    // syscall
+    kernel_interrupt_descriptor_set_gate(0x80, (uint32_t)(isr128), 0x08, 0xEE);
 }

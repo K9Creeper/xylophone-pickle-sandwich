@@ -10,6 +10,7 @@ bool ispunct(const char c);
 
 int strlen(const char *str);
 char *strtok(char *str, const char *delim, char *out);
+int memcmp(const void* s1, const void* s2, uint32_t n);
 
 bool equal(const char *a, const char *b);
 

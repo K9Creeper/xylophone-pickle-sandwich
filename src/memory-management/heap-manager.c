@@ -6,8 +6,6 @@
 
 #include <memory-management/paging-manager.h>
 
-heap_manager_t *current_system_heap_manager = NULL;
-
 static bool is_less_than(const type_t a, const type_t b)
 {
     return (((heap_header_t *)(a))->size < ((heap_header_t *)(b))->size);
@@ -367,10 +365,7 @@ void heap_manager_init(heap_manager_t *heap, uint32_t start_address, uint32_t en
     hole->is_hole = true;
 
     ordered_array_insert(&heap->heap_array, hole);
-
-    if (!current_system_heap_manager)
-        current_system_heap_manager = heap;
-
+    
     heap->status = HEAP_INITIALIZED;
 }
 

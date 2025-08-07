@@ -14,16 +14,10 @@
 // boot.s
 extern page_directory_t *boot_page_directory;
 
-// heap-manager.c
-extern heap_manager_t *current_system_heap_manager;
-
 static bool is_enabled = false;
 static bool is_pse_enabled = true;
 
 physical_memory_manager_t system_physical_memory_manager;
-
-page_directory_t *current_system_page_directory = NULL;
-paging_manager_t *current_system_paging_manager = NULL;
 
 static uint32_t virtual_2_physical(page_directory_t *page_directory, uint32_t virtual_address)
 {
@@ -68,24 +62,7 @@ static void disable_pse_reg()
     is_pse_enabled = false;
 }
 
-static void swap_system_page_directory(uint32_t cr3, bool is_physical)
-{
-    if (!cr3)
-        return;
-
-    uint32_t t;
-
-    if (!is_physical)
-    {
-        t = virtual_2_physical(boot_page_directory, cr3);
-    }
-    else
-        t = cr3;
-
-    __asm__ volatile("mov %0, %%cr3" ::"r"(t));
-}
-
-static void allocate_page(page_directory_t *page_directory, uint32_t virtual_address, uint32_t frame, bool is_kernel, bool is_writeable)
+static void allocate_page(page_directory_t *page_directory, uint32_t virtual_address, uint32_t frame, bool is_kernel, bool is_writeable, heap_manager_t *heap_manager)
 {
     if (!page_directory)
         return;
@@ -99,11 +76,11 @@ static void allocate_page(page_directory_t *page_directory, uint32_t virtual_add
 
     if (!table)
     {
-        table = heap_manager_malloc(current_system_heap_manager, sizeof(page_table_t), true, NULL);
+        table = heap_manager_malloc(heap_manager, sizeof(page_table_t), true, NULL);
 
         memset((uint8_t *)(table), 0, sizeof(page_table_t));
 
-        uint32_t t = virtual_2_physical(current_system_page_directory, (uint32_t)table);
+        uint32_t t = virtual_2_physical(page_directory, (uint32_t)table);
 
         page_directory->tables[page_dir_idx].frame = t >> 12;
         page_directory->tables[page_dir_idx].present = 1;
@@ -164,11 +141,8 @@ static void free_page(page_directory_t *page_directory, uint32_t virtual_address
     table->pages[page_table_idx].frame = 0;
 }
 
-void paging_manager_init(paging_manager_t *paging_manager, page_directory_t *page_directory, struct heap_manager_s *heap_manager, bool should_clear)
+void paging_manager_init(paging_manager_t *paging_manager, page_directory_t *page_directory, heap_manager_t *heap_manager, bool should_clear)
 {
-    if (!current_system_page_directory)
-        current_system_page_directory = boot_page_directory;
-
     if (!paging_manager || !page_directory || !heap_manager || !system_physical_memory_manager.is_initialized)
         return;
 
@@ -183,41 +157,29 @@ void paging_manager_init(paging_manager_t *paging_manager, page_directory_t *pag
     paging_manager->is_enabled = false;
 }
 
-void paging_manager_swap_system_page_directory(paging_manager_t *paging_manager, uint32_t cr3, bool is_physical)
+bool paging_manager_swap_system_page_directory(uint32_t cr3, bool is_physical)
 {
-    if (!paging_manager || !paging_manager->is_initialized)
-        return;
+    if (!cr3)
+        return false;
 
     uint32_t t;
 
-    if (cr3)
+    if (!is_physical)
     {
-        if (!is_physical)
-        {
-            t = virtual_2_physical(boot_page_directory, cr3);
-        }
-        else
-            t = cr3;
+        t = virtual_2_physical(boot_page_directory, cr3);
     }
     else
-    {
-        if (!is_physical)
-            t = virtual_2_physical(boot_page_directory, (uint32_t)paging_manager->page_directory);
-        else
-            t = (uint32_t)(paging_manager->page_directory);
-    }
+        t = cr3;
 
     __asm__ volatile("mov %0, %%cr3" ::"r"(t));
 
-    current_system_paging_manager = paging_manager;
-    current_system_page_directory = paging_manager->page_directory;
-    current_system_heap_manager = paging_manager->heap_manager;
+    return true;
 }
 
-void paging_manager_set_as_system_paging(paging_manager_t *paging_manager, bool is_physical)
+bool paging_manager_set_as_system_paging(paging_manager_t *paging_manager, bool is_physical)
 {
     if (!paging_manager || !paging_manager->is_initialized)
-        return;
+        return false;
 
     uint32_t t;
     if (!is_physical)
@@ -227,9 +189,7 @@ void paging_manager_set_as_system_paging(paging_manager_t *paging_manager, bool 
 
     __asm__ volatile("mov %0, %%cr3" ::"r"(t));
 
-    current_system_paging_manager = paging_manager;
-    current_system_page_directory = paging_manager->page_directory;
-    current_system_heap_manager = paging_manager->heap_manager;
+    return true;
 }
 
 void paging_manager_swap_page_directory(paging_manager_t *paging_manager, page_directory_t *page_directory)
@@ -264,14 +224,14 @@ void paging_manager_enable(paging_manager_t *paging_manager)
 
 void paging_manager_identity_allocate_single(paging_manager_t *paging_manager, uint32_t address, bool is_kernel, bool is_writeable)
 {
-    if (!paging_manager || !paging_manager->is_initialized)
+    if (!paging_manager || !paging_manager->is_initialized || !paging_manager->heap_manager)
         return;
-    allocate_page(paging_manager->page_directory, address, (address / PAGE_SIZE), is_kernel, is_writeable);
+    allocate_page(paging_manager->page_directory, address, (address / PAGE_SIZE), is_kernel, is_writeable, paging_manager->heap_manager);
 }
 
 void paging_manager_identity_allocate_range(paging_manager_t *paging_manager, uint32_t start_address, uint32_t end_address, bool is_kernel, bool is_writeable)
 {
-    if (!paging_manager || !paging_manager->is_initialized)
+    if (!paging_manager || !paging_manager->is_initialized || !paging_manager->heap_manager)
         return;
     for (; start_address <= end_address; start_address += PAGE_SIZE)
     {
@@ -281,14 +241,14 @@ void paging_manager_identity_allocate_range(paging_manager_t *paging_manager, ui
 
 void paging_manager_allocate_single(paging_manager_t *paging_manager, uint32_t address, bool is_kernel, bool is_writeable)
 {
-    if (!paging_manager || !paging_manager->is_initialized)
+    if (!paging_manager || !paging_manager->is_initialized || !paging_manager->heap_manager)
         return;
-    allocate_page(paging_manager->page_directory, address, 0, is_kernel, is_writeable);
+    allocate_page(paging_manager->page_directory, address, 0, is_kernel, is_writeable, paging_manager->heap_manager);
 }
 
 void paging_manager_allocate_range(paging_manager_t *paging_manager, uint32_t start_address, uint32_t end_address, bool is_kernel, bool is_writeable)
 {
-    if (!paging_manager || !paging_manager->is_initialized)
+    if (!paging_manager || !paging_manager->is_initialized || !paging_manager->heap_manager)
         return;
 
     for (; start_address <= end_address; start_address += PAGE_SIZE)
@@ -312,4 +272,13 @@ void paging_manager_free_range(paging_manager_t *paging_manager, uint32_t start_
     {
         paging_manager_free_single(paging_manager, start_address, should_free);
     }
+}
+
+void paging_manager_allocate_to_physical(paging_manager_t *paging_manager, uint32_t virtual_address, uint32_t physical_address, bool is_kernel, bool is_writeable)
+{
+    if (!paging_manager || !paging_manager->is_initialized || !paging_manager->heap_manager)
+        return;
+
+    // Pass frame number (physical address >> 12)
+    allocate_page(paging_manager->page_directory, virtual_address, (physical_address >> 12), is_kernel, is_writeable, paging_manager->heap_manager);
 }

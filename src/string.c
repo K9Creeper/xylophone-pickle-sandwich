@@ -59,6 +59,17 @@ char *strtok(char *str, const char *delim, char *out)
   return token;
 }
 
+int memcmp(const void *s1, const void *s2, uint32_t n) {
+    const unsigned char *p1 = s1;
+    const unsigned char *p2 = s2;
+
+    for (uint32_t i = 0; i < n; i++) {
+        if (p1[i] != p2[i])
+            return (int)p1[i] - (int)p2[i];
+    }
+    return 0;
+}
+
 bool equal(const char* a, const char* b){
   int len = strlen(a);
   if(len == strlen(b))

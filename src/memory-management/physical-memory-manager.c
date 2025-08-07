@@ -5,11 +5,8 @@
 #include <memory-management/physical-memory-manager.h>
 
 #include <memory-management/paging-manager.h>
-#include <memory-management/heap-manager.h>
 
-extern heap_manager_t *current_system_heap_manager;
-
-void physical_memory_manager_init(physical_memory_manager_t* physical_memory_manager, uint32_t memory_size){
+void physical_memory_manager_init(physical_memory_manager_t* physical_memory_manager, uint32_t memory_size, heap_manager_t* heap_manager){
     if(!physical_memory_manager || physical_memory_manager->is_initialized)
         return; 
 
@@ -21,7 +18,7 @@ void physical_memory_manager_init(physical_memory_manager_t* physical_memory_man
     uint32_t entry_count = bit_count / physical_memory_manager->bitmap.bits_per_entry;
     const int size = entry_count * physical_memory_manager->bitmap.sizeof_type_t;
     
-    bitmap_place(&physical_memory_manager->bitmap, heap_manager_malloc(current_system_heap_manager, size, false, NULL), size);
+    bitmap_place(&physical_memory_manager->bitmap, heap_manager_malloc(heap_manager, size, false, NULL), size);
     bitmap_clear(&physical_memory_manager->bitmap);
 
     physical_memory_manager->is_initialized = true;

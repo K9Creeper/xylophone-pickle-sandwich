@@ -46,17 +46,17 @@ extern void kernel_interrupt_descriptor_set_gate(uint8_t num, uint32_t base, uin
 
 void irq_handler(registers_t regs)
 {
-    if (regs.int_no >= 40)
+    if (regs.interrupt >= 40)
     {
         outportb(0xA0, 0x20);
     }
     outportb(0x20, 0x20);
 
-    if (regs.int_no >= 16 && regs.int_no - 32 < 16)
+    if (regs.interrupt >= 16 && regs.interrupt - 32 < 16)
     {
-        if (irq_handles[regs.int_no - 32])
+        if (irq_handles[regs.interrupt - 32])
         {
-            kernel_interrupt_request_handle_t handler = (kernel_interrupt_request_handle_t)(irq_handles[regs.int_no - 32]);
+            kernel_interrupt_request_handle_t handler = (kernel_interrupt_request_handle_t)(irq_handles[regs.interrupt - 32]);
             if (handler != NULL)
             {
                 handler(&regs);

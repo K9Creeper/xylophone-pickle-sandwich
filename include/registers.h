@@ -7,27 +7,16 @@
 
 #include <stdint.h>
 
-typedef struct registers_s
-{
+typedef struct registers_s {
     uint32_t ds; // 0
+    //        4    8    16  20  24    28   32   36
+    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
 
-    uint32_t edi, // 4
-        esi,      // 8
-        ebp,      // 12
-        esp,      // 16
-        ebx,      // 20
-        edx,      // 24
-        ecx,      // 28
-        eax;      // 32
+    //         40         44
+    uint32_t interrupt, error;
 
-    uint32_t int_no, // 36
-        err_code;    // 40
-
-    uint32_t eip, // 44
-        cs,       // 48
-        eflags,   // 52
-        useresp,  // 56
-        ss;       // 60
+    //        48  52   56        60            64
+    uint32_t eip, cs, eflags, usermode_esp, usermode_ss;
 } registers_t;
 
 typedef struct registers16_s
