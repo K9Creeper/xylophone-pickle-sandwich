@@ -1,24 +1,25 @@
-/// ------------
+/// -------------
 /// scheduling.h
-/// @brief This file declares the functions to handling scheduling.
+/// @brief This file declares the functions that handle system scheduling.
 
 #ifndef SCHEDULING_H
 #define SCHEDULING_H
 
 #include <data-structures/scheduling/task.h>
-
-#define MAX_TASK_COUNT 256
-
-extern bool scheduling_is_initialized;
+#include <registers.h>
 
 extern void scheduling_init(void);
+extern int scheduling_exit(void);
 
-extern void scheduling_install(void);
+extern int scheduling_prioritize(task_t* task);
+extern int scheduling_add(task_t* task);
+extern int scheduling_block(task_t* task);
+extern int scheduling_sleep(int time);
+extern task_t* scheduling_consume(void);
 
-extern void scheduling_add_task(task_t* task);
+extern task_t* scheduling_get_task_by_pid(uint16_t id);
+extern task_t* scheduling_get_task_by_name(const char* name);
 
-extern void scheduling_exit_task(void);
-
-extern void scheduling_create_task(const char *name, void *routine, bool is_kernel, bool is_thread);
+extern int scheduling_schedule(registers_t*, uint32_t);
 
 #endif
