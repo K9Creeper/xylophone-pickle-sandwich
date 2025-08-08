@@ -16,6 +16,7 @@ extern int scheduling_add(task_t* task);
 extern int scheduling_block(task_t* task);
 extern int scheduling_sleep(int time);
 extern task_t* scheduling_consume(void);
+extern int scheduling_yield(void);
 
 extern task_t* scheduling_get_task_by_pid(uint16_t id);
 extern task_t* scheduling_get_task_by_name(const char* name);

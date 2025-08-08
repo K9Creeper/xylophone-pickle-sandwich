@@ -225,3 +225,8 @@ task_t *scheduling_consume(void)
     current_task = NULL;
     return task;
 }
+
+// Wrapper
+int scheduling_yield(void){
+    return scheduling_schedule(NULL, pit_get_tick());
+}

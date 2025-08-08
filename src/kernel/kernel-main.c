@@ -24,37 +24,30 @@ static void setup_misc(void);
 
 static void setup_descriptors(void);
 
-static void setup_bios32(void);
-
 static void setup_early_heap(void);
 static void setup_paging(void);
 static void setup_heap(void);
 
-void setup_fault_handlers(void);
+static void setup_fault_handlers(void);
+
+static void setup_vesa(void);
 
 static void setup_drivers(void);
 
 static void setup_scheduling(void);
 static void finish_scheduling(void);
 
-static int32_t _syscall_1(uint32_t syscall, uint32_t arg0)
-{
-    int32_t ret;
-    asm volatile("int $0x80" : "=a"(ret) : "a"(syscall), "b"(arg0));
-    return ret;
-}
+static void enable_keyboard_input(void);
 
 void kernel_main(uint32_t addr, uint32_t magic)
 {
     DISABLE_INTERRUPTS();
 
     setup_misc();
-    
+
     setup_descriptors();
 
     setup_fault_handlers();
-
-    setup_bios32();
 
     setup_early_heap();
 
@@ -64,14 +57,22 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     setup_drivers();
 
+    ENABLE_INTERRUPTS();
+
+    enable_keyboard_input();
+
+    // allow user input
+    
+
+    DISABLE_INTERRUPTS();
+
+    /*
     setup_scheduling();
 
     finish_scheduling();
-
-    vga_terminal_write_string("Hello!\nI hope you are having a wonderful day\n");
+    */
 
     ENABLE_INTERRUPTS();
-
 halt:
     for (;;)
     {
@@ -86,7 +87,7 @@ void setup_misc(void)
     kernel_misc_drivers_serial_com1_init();
 
     vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_LIGHT_BLUE, VGA_TERMINAL_COLOR_DARK_GREY);
-    vga_terminal_write_string("[Kernel Main] Setup VGA Terminal\n");
+    vga_terminal_show_cursor(false);
 }
 
 #include "descriptors/global-descriptor-table.h"
@@ -96,34 +97,20 @@ void setup_misc(void)
 void setup_descriptors(void)
 {
     kernel_global_descriptor_table_init();
-    vga_terminal_write_string("[Kernel Main] Init GDT\n");
     kernel_global_descriptor_table_install();
-    vga_terminal_write_string("[Kernel Main] Installed GDT\n");
 
     uint32_t esp;
     get_esp(esp);
     kernel_task_state_segment_int(5, 0x10, esp);
-    vga_terminal_write_string("[Kernel Main] Init (Basic) TSS\n");
 
     kernel_interrupt_descriptor_table_init();
-    vga_terminal_write_string("[Kernel Main] Init IDT\n");
     kernel_interrupt_descriptor_table_install();
-    vga_terminal_write_string("[Kernel Main] Installed IDT\n");
-}
-
-#include "bios32/bios32.h"
-
-void setup_bios32(void)
-{
-    kernel_bios32_init();
-    vga_terminal_write_string("[Kernel Main] Init BIOS calls\n");
 }
 
 #include "memory-management/kheap.h"
 void setup_early_heap(void)
 {
     kheap_pre_init();
-    vga_terminal_write_string("[Kernel Main] Setup early KHeap\n");
 }
 
 #include "memory-management/pmm.h"
@@ -132,16 +119,13 @@ void setup_paging(void)
 {
     if (pmm_init(PHYSICAL_MEMORY_SIZE))
     {
-        vga_terminal_write_string("[Kernel Main] Init PMM\n");
         paging_init();
-        vga_terminal_write_string("[Kernel Main] Init Paging\n");
     }
 }
 
 void setup_heap(void)
 {
     kheap_init();
-    vga_terminal_write_string("[Kernel Main] Finished Init KHeap\n");
 }
 
 #include "interrupts/interrupt-service.h"
@@ -176,31 +160,16 @@ static void page_fault_handler(registers_t *r)
 void setup_fault_handlers(void)
 {
     kernel_interrupt_service_set_fault_handle(14, page_fault_handler);
-    
-    vga_terminal_write_string("[Kernel Main] Setup Fault Handlers\n");
 }
 
 #include "drivers/pit/pit.h"
+#include "drivers/keyboard/keyboard.h"
 #include "drivers/syscall/syscall.h"
 void setup_drivers(void)
 {
     syscall_init();
+    keyboard_init();
     pit_init(1000);
-    
-    vga_terminal_write_string("[Kernel Main] Setup Drivers\n");
-}
-
-void idle_task1(void)
-{
-    
-}
-
-void idle_task2(void)
-{
-    while (true)
-    {
-        printf("idle2 is running...\n");
-    }
 }
 
 #include <scheduling/scheduling.h>
@@ -208,19 +177,23 @@ void idle_task2(void)
 void setup_scheduling(void)
 {
     scheduling_init();
-    vga_terminal_write_string("[Kernel Main] Init Scheduling\n");
-
-    kthread_register(idle_task1, "idletask1");
-    kthread_register(idle_task2, "idletask2");
-
-    vga_terminal_write_string("[Kernel Main] Added Kernel Threads\n");
 }
 
 void finish_scheduling(void)
 {
-    kthread_start("idletask1", 0, NULL);
-    kthread_start("idletask2", 0, NULL);
-    
-    pit_add_handle((pit_handle_t)scheduling_schedule);
-    vga_terminal_write_string("[Kernel Main] Finished Scheduling\n");
+    //pit_add_handle((pit_handle_t)scheduling_schedule);
+}
+
+
+static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, const keyboard_map_t keyboard_map)
+{
+    if (keyboard_key.value != '\0')
+    {
+        vga_terminal_write(&keyboard_key.value, 1);
+    }
+}
+
+void enable_keyboard_input(void){
+    vga_terminal_show_cursor(true);
+    keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
 }

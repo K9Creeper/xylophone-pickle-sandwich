@@ -8,38 +8,56 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <memory.h>
+
 bool vga_terminal_is_using = false;
 
-static uint16_t* vga_terminal_buffer = NULL;
+static uint16_t *vga_terminal_buffer = NULL;
 static uint16_t vga_terminal_row;
 static uint16_t vga_terminal_column;
 static uint8_t vga_terminal_color;
 
-static uint8_t entry_color(vga_terminal_color_enum_t fg, vga_terminal_color_enum_t bg) {
-    return (fg & 0x0F) | ((bg & 0x07) << 4);  // Mask to avoid blinking
+static uint8_t entry_color(vga_terminal_color_enum_t fg, vga_terminal_color_enum_t bg)
+{
+	return (fg & 0x0F) | ((bg & 0x07) << 4); // Mask to avoid blinking
 }
 
-static uint16_t entry(unsigned char character, uint8_t color){
-    return (uint16_t)character | (uint16_t)color << 8;
+static uint16_t entry(unsigned char character, uint8_t color)
+{
+	return (uint16_t)character | (uint16_t)color << 8;
 }
 
 static void put_entry_at(char c, uint8_t color, uint16_t x, uint16_t y)
 {
-    const uint16_t index = y * VGA_TERMINAL_WIDTH + x;
+	const uint16_t index = y * VGA_TERMINAL_WIDTH + x;
 	vga_terminal_buffer[index] = entry(c, color);
 }
 
-static void put_char(char c){
-    put_entry_at(c, vga_terminal_color, vga_terminal_column, vga_terminal_row);
-    if(++vga_terminal_column == VGA_TERMINAL_WIDTH){
-        vga_terminal_column = 0;
-        if (++vga_terminal_row == VGA_TERMINAL_HEIGHT)
-			vga_terminal_row = 0;
-    }
+static void update_cursor(int x, int y)
+{
+	uint16_t pos = y * VGA_TERMINAL_WIDTH + x;
+
+	outportb(0x3D4, 0x0F);
+	outportb(0x3D5, (uint8_t) (pos & 0xFF));
+	outportb(0x3D4, 0x0E);
+	outportb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
 }
 
-static void write(const char* data, size_t size){
-    for (size_t i = 0; i < size; i++)
+static void put_char(char c)
+{
+	put_entry_at(c, vga_terminal_color, vga_terminal_column, vga_terminal_row);
+	if (++vga_terminal_column == VGA_TERMINAL_WIDTH)
+	{
+		vga_terminal_column = 0;
+		if (++vga_terminal_row == VGA_TERMINAL_HEIGHT)
+			vga_terminal_row = 0;
+	}
+	update_cursor(vga_terminal_column, vga_terminal_row);
+}
+
+void vga_terminal_write(const char *data, uint32_t size)
+{
+	for (uint32_t i = 0; i < size; i++)
 	{
 		switch (data[i])
 		{
@@ -49,13 +67,12 @@ static void write(const char* data, size_t size){
 			break;
 
 		case '\t':
-			vga_terminal_column+=8;
-			
+			vga_terminal_column += 8;
 			break;
 
 		case '\b':
 			vga_terminal_column--;
-
+			put_char(' ');
 			break;
 		default:
 			put_char(data[i]);
@@ -64,8 +81,9 @@ static void write(const char* data, size_t size){
 	}
 }
 
-static void clear(void){
-    for (uint16_t y = 0; y < VGA_TERMINAL_HEIGHT; y++)
+static void clear(void)
+{
+	for (uint16_t y = 0; y < VGA_TERMINAL_HEIGHT; y++)
 	{
 		for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++)
 		{
@@ -75,31 +93,49 @@ static void clear(void){
 	}
 }
 
-void vga_terminal_init(uint32_t buffer_address, vga_terminal_color_enum_t foreground_color, vga_terminal_color_enum_t background_color){
-    vga_terminal_buffer = (uint16_t*)buffer_address;
+void vga_terminal_init(uint32_t buffer_address, vga_terminal_color_enum_t foreground_color, vga_terminal_color_enum_t background_color)
+{
+	vga_terminal_buffer = (uint16_t *)buffer_address;
 
-    vga_terminal_row = 0;
-    vga_terminal_column = 0;
-    vga_terminal_color = entry_color(foreground_color, background_color);
-    vga_terminal_is_using = true;
+	vga_terminal_row = 0;
+	vga_terminal_column = 0;
+	vga_terminal_color = entry_color(foreground_color, background_color);
+	vga_terminal_is_using = true;
 
-    clear();
+	clear();
 }
 
-void vga_terminal_destroy(void){    
-    vga_terminal_row = 0;
-    vga_terminal_column = 0;
+void vga_terminal_show_cursor(bool show)
+{
+	if (show)
+	{
+		outportb(0x3D4, 0x0A);
+		outportb(0x3D5, (inportb(0x3D5) & 0xC0) | 14);
 
-    clear();
-    
-    vga_terminal_is_using = false;
+		outportb(0x3D4, 0x0B);
+		outportb(0x3D5, (inportb(0x3D5) & 0xE0) | 15);
+	}else{
+		outportb(0x3D4, 0x0A);
+		outportb(0x3D5, 0x20);
+	}
 }
 
-void vga_terminal_write_string(const char *format, ...){
-    if(!vga_terminal_buffer || !vga_terminal_is_using)
-        return;
+void vga_terminal_destroy(void)
+{
+	vga_terminal_row = 0;
+	vga_terminal_column = 0;
 
-    char buffer[256];
+	clear();
+
+	vga_terminal_is_using = false;
+}
+
+void vga_terminal_write_string(const char *format, ...)
+{
+	if (!vga_terminal_buffer || !vga_terminal_is_using)
+		return;
+
+	char buffer[256];
 	int buffer_index = 0;
 
 	va_list args;
@@ -182,13 +218,13 @@ void vga_terminal_write_string(const char *format, ...){
 		if (buffer_index >= sizeof(buffer) - 1)
 		{
 			buffer[buffer_index] = '\0';
-			write(buffer, strlen(buffer));
+			vga_terminal_write(buffer, strlen(buffer));
 			buffer_index = 0;
 		}
 	}
 
 	buffer[buffer_index] = '\0';
-	write(buffer, strlen(buffer));
+	vga_terminal_write(buffer, strlen(buffer));
 
 	va_end(args);
 }
