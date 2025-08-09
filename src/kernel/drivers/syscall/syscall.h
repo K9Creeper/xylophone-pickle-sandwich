@@ -15,5 +15,6 @@ typedef enum syscall_e{
 }syscall_t;
 
 extern void syscall_init(void);
+extern void syscall_register(uint16_t index, void* func);
 
 #endif
