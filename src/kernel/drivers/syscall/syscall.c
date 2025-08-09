@@ -22,7 +22,6 @@ extern void _handle_syscall_interrupt(registers_t* frame);
 void syscall_init(void){
     memset((uint8_t*)syscall_handlers, 0, (sizeof(void*) * NUM_OF_SYSCALLS));
     
-    // FIXME: This is a temporary fix, need to implement _handle_syscall_interrupt
     kernel_interrupt_service_set_handle(0x80, _handle_syscall_interrupt);
 }
 
