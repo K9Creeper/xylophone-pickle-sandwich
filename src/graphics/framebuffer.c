@@ -29,7 +29,7 @@ void framebuffer_clear(framebuffer_t* fb){
     if (fb == NULL || fb->lfb == NULL)
         return;
 
-    memset((uint8_t*)fb->lfb, 0, fb->size);
+    fast_memset(fb->lfb, 0, fb->size);
 }
 
 uint32_t* framebuffer_get_pixel(framebuffer_t *fb, int x, int y)

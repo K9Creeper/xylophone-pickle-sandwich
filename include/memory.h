@@ -21,7 +21,11 @@ void swap(int *p1, int *p2);
 
 unsigned char *memcpy(unsigned char *dest, const unsigned char *src, int count);
 
+void *fast_memcpy(void *dest, const void *src, uint32_t n);
+
 unsigned char *memset(unsigned char *dest, unsigned char val, int count);
+
+void *fast_memset(void *dest, int value, uint32_t n);
 
 unsigned short *memsetw(unsigned short *dest, unsigned short val, int count);
 

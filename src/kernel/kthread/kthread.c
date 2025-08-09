@@ -10,6 +10,7 @@
 
 #include <memory.h>
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_KTHREADS 64
 

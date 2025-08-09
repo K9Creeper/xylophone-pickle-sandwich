@@ -21,7 +21,7 @@ uint16_t inports(unsigned short _port)
 
 void outports(unsigned short _port, uint16_t _data)
 {
-  __asm__ volatile("outw %1, %0" : : "dN" (_port), "a" (_data));
+  __asm__ volatile("outw %1, %0" : : "dN"(_port), "a"(_data));
 }
 
 uint32_t inportl(unsigned short _port)
@@ -31,9 +31,9 @@ uint32_t inportl(unsigned short _port)
   return rv;
 }
 
-void outportl(unsigned short _port, uint16_t  _data)
+void outportl(unsigned short _port, uint16_t _data)
 {
-  __asm__ volatile ("outl %%eax, %%dx" : : "dN" (_port), "a" (_data));
+  __asm__ volatile("outl %%eax, %%dx" : : "dN"(_port), "a"(_data));
 }
 
 void call_asm(void *fn, void *arg)
@@ -63,6 +63,35 @@ unsigned char *memcpy(unsigned char *dest,
   return cdest;
 }
 
+void *fast_memcpy(void *dest, const void *src, uint32_t n)
+{
+  uint8_t *d = (uint8_t *)dest;
+  const uint8_t *s = (const uint8_t *)src;
+
+  while (n > 0 && ((uintptr_t)d & 3))
+  {
+    *d++ = *s++;
+    n--;
+  }
+
+  uint32_t *d32 = (uint32_t *)d;
+  const uint32_t *s32 = (const uint32_t *)s;
+  while (n >= 4)
+  {
+    *d32++ = *s32++;
+    n -= 4;
+  }
+
+  d = (uint8_t *)d32;
+  s = (const uint8_t *)s32;
+  while (n--)
+  {
+    *d++ = *s++;
+  }
+
+  return dest;
+}
+
 unsigned char *memset(unsigned char *dest, unsigned char val, int count)
 {
   register unsigned char *ptr = (unsigned char *)dest;
@@ -70,6 +99,34 @@ unsigned char *memset(unsigned char *dest, unsigned char val, int count)
     *ptr++ = val;
   return dest;
 }
+
+void *fast_memset(void *dest, int value, uint32_t n)
+{
+    uint8_t *d = (uint8_t *)dest;
+
+    uint32_t val32 = (uint8_t)value;
+    val32 |= val32 << 8;
+    val32 |= val32 << 16;
+
+    while (n > 0 && ((uintptr_t)d & 3)) {
+        *d++ = (uint8_t)value;
+        n--;
+    }
+
+    uint32_t *d32 = (uint32_t *)d;
+    while (n >= 4) {
+        *d32++ = val32;
+        n -= 4;
+    }
+
+    d = (uint8_t *)d32;
+    while (n--) {
+        *d++ = (uint8_t)value;
+    }
+
+    return dest;
+}
+
 
 unsigned short *memsetw(unsigned short *dest, unsigned short val, int count)
 {

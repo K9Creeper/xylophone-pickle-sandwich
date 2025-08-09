@@ -48,7 +48,7 @@ void scheduling_init(void)
 }
 
 static int round_robin(uint32_t tick)
-{
+{    
     task_t *next;
 
     // Peek at the next task

@@ -13,9 +13,21 @@
 
 #include "drivers/vga-terminal/vga-terminal.h"
 
+#include <data-structures/kernel-context/kernel-context.h>
 #include <kernel/util.h>
 
 int system_interrupt_disable_counter = 0;
+
+kernel_context_t* kernel_context = &(kernel_context_t){
+    .physical_memory_size = 0x1000000 * 8U, // (16 * # )MB
+    .video_state = {
+        true,
+        VGA_TERMINAL_WIDTH,
+        VGA_TERMINAL_HEIGHT,
+        0, 0,
+        DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS
+    }
+};
 
 // Wrappers
 static void setup_misc(void);
@@ -61,15 +73,17 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     // allow user input
     
-    //setup_vesa();
+    setup_vesa();
+
+    
 
     DISABLE_INTERRUPTS();
 
-    /*
     setup_scheduling();
+    
 
     finish_scheduling();
-    */
+    
 
     ENABLE_INTERRUPTS();
 halt:
@@ -118,8 +132,7 @@ void setup_early_heap(void)
 #include "memory-management/paging.h"
 void setup_paging(void)
 {
-     // (16 * # )MB
-    if (pmm_init(0x1000000 * 8U))
+    if (pmm_init(kernel_context->physical_memory_size))
     {
         paging_init();
     }
@@ -176,16 +189,30 @@ void setup_drivers(void)
 
 #include <scheduling/scheduling.h>
 #include "kthread/kthread.h"
+
+extern void kthread_graphics(void);
+
+void kthread_idle(void){
+    while (true)
+    {
+        __asm__ volatile("nop");
+    }
+}
+
 void setup_scheduling(void)
 {
     scheduling_init();
+    kthread_register((kthread_entry_t)kthread_graphics, "graphics");
+    kthread_register((kthread_entry_t)kthread_idle, "idlethread");
 }
 
 void finish_scheduling(void)
 {
-    //pit_add_handle((pit_handle_t)scheduling_schedule);
+    kthread_start("graphics", 0, NULL);
+    kthread_start("idlethread", 0, NULL);
+    
+    pit_add_handle((pit_handle_t)scheduling_schedule);
 }
-
 
 static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, const keyboard_map_t keyboard_map)
 {

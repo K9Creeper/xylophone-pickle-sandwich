@@ -8,24 +8,26 @@
 #include <stddef.h>
 #include <memory.h>
 
+#include <kernel/stdlib.h>
+
 static framebuffer_t foreground_buffer;
 static framebuffer_t background_buffer;
 
 void graphics_init(uint32_t lfb_location, uint32_t width, uint32_t height, uint32_t pitch, uint32_t bpp){
     framebuffer_init(&foreground_buffer, (uint32_t*)lfb_location, width, height, pitch, bpp);
-    framebuffer_init(&background_buffer, (uint32_t*)lfb_location, width, height, pitch, bpp);
+    framebuffer_init(&background_buffer, (uint32_t*)kernel_calloc(1, foreground_buffer.size), width, height, pitch, bpp);
 }
 
 void graphics_fill_screen(uint32_t color){
-    if (foreground_buffer.lfb == NULL)
+    if (background_buffer.lfb == NULL)
         return;
 
-    for (uint32_t y = 0; y < foreground_buffer.height; y++)
+    for (uint32_t y = 0; y < background_buffer.height; y++)
     {
-        for (uint32_t x = 0; x < foreground_buffer.width; x++)
+        for (uint32_t x = 0; x < background_buffer.width; x++)
         {
             // NOTE: Could just call the graphics_paint function here, but this is faster (i think)
-            uint32_t* pixel = framebuffer_get_pixel(&foreground_buffer, x, y);
+            uint32_t* pixel = framebuffer_get_pixel(&background_buffer, x, y);
             if (pixel)
                 *pixel = color;
         }
@@ -66,7 +68,7 @@ void graphics_swap_buffers(bool clear_after_swap){
     if(foreground_buffer.size != background_buffer.size)
         return;
 
-    memcpy((uint8_t *)(foreground_buffer.lfb), (uint8_t*)(background_buffer.lfb), foreground_buffer.size);
+    fast_memcpy((foreground_buffer.lfb), (background_buffer.lfb), foreground_buffer.size);
     
     if(clear_after_swap)
         framebuffer_clear(&background_buffer);

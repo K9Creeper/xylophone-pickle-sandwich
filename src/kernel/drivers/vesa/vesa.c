@@ -9,8 +9,13 @@
 
 #include "../../bios32/bios32.h"
 
+#include <data-structures/kernel-context/kernel-context.h>
+
 // Not sure how many there actually are...
 #define VESA_MODE_SIZE 64
+
+// kernel-main.c
+extern kernel_context_t* kernel_context;
 
 static vbe_info_block_t vbe_info;
 static vea_mode_t vesa_modes[VESA_MODE_SIZE];
@@ -110,7 +115,16 @@ int vesa_set_mode(uint32_t mode)
         if (vesa_modes[i].number != mode)
             continue;
         _vesa_set_mode(mode);
+
         current_mode = vesa_modes[i];
+
+        kernel_context->video_state.is_text_mode = false;
+        kernel_context->video_state.lfb = current_mode.info.physbase;
+        kernel_context->video_state.width = current_mode.info.width;
+        kernel_context->video_state.height = current_mode.info.height;
+        kernel_context->video_state.bpp = current_mode.info.bpp;
+        kernel_context->video_state.pitch = current_mode.info.pitch;
+
         vesa_map_buffer();
         return 0;
     }
@@ -132,6 +146,14 @@ int vesa_set_specs(uint32_t width, uint32_t height)
 
         _vesa_set_mode(vesa_modes[i].number);
         current_mode = vesa_modes[i];
+
+        kernel_context->video_state.is_text_mode = false;
+        kernel_context->video_state.lfb = current_mode.info.physbase;
+        kernel_context->video_state.width = current_mode.info.width;
+        kernel_context->video_state.height = current_mode.info.height;
+        kernel_context->video_state.bpp = current_mode.info.bpp;
+        kernel_context->video_state.pitch = current_mode.info.pitch;
+
         vesa_map_buffer();
         return 0;
     }
@@ -144,16 +166,13 @@ vea_mode_t *vesa_current_mode(void)
     return &current_mode;
 }
 
-#include <memory-management/paging-manager.h>
-
-extern paging_manager_t kernel_paging_manager;
 void vesa_map_buffer(void)
 {
-    if(!kernel_paging_manager.is_initialized)
+    if (!kernel_context->paging_manager.is_initialized)
         return;
     const uint32_t lfb = current_mode.info.physbase;
     const uint32_t lfb_size = ((current_mode.info.height - 1) * current_mode.info.pitch + ((current_mode.info.width - 1) * (current_mode.info.bpp / 8)));
     const uint32_t lfb_max = lfb + lfb_size;
 
-    paging_manager_identity_allocate_range(&kernel_paging_manager, lfb, lfb_max, true, true);
+    paging_manager_identity_allocate_range(&kernel_context->paging_manager, lfb, lfb_max, true, true);
 }

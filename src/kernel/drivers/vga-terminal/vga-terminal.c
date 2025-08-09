@@ -10,6 +10,11 @@
 
 #include <memory.h>
 
+#include <data-structures/kernel-context/kernel-context.h>
+
+// kernel-main.c
+extern kernel_context_t *kernel_context;
+
 bool vga_terminal_is_using = false;
 
 static uint16_t *vga_terminal_buffer = NULL;
@@ -56,69 +61,76 @@ static void put_char(char c)
 
 static void scroll_terminal(void)
 {
-    for (uint16_t y = 1; y < VGA_TERMINAL_HEIGHT; y++)
-    {
-        for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++)
-        {
-            vga_terminal_buffer[(y - 1) * VGA_TERMINAL_WIDTH + x] =
-                vga_terminal_buffer[y * VGA_TERMINAL_WIDTH + x];
-        }
-    }
+	for (uint16_t y = 1; y < VGA_TERMINAL_HEIGHT; y++)
+	{
+		for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++)
+		{
+			vga_terminal_buffer[(y - 1) * VGA_TERMINAL_WIDTH + x] =
+				vga_terminal_buffer[y * VGA_TERMINAL_WIDTH + x];
+		}
+	}
 
-    // Clear the last line
-    for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++) {
-        put_entry_at(' ', vga_terminal_color, x, VGA_TERMINAL_HEIGHT - 1);
-    }
+	// Clear the last line
+	for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++)
+	{
+		put_entry_at(' ', vga_terminal_color, x, VGA_TERMINAL_HEIGHT - 1);
+	}
 }
 
 void vga_terminal_write(const char *data, uint32_t size)
 {
-    for (uint32_t i = 0; i < size; i++)
-    {
-        char c = data[i];
+	for (uint32_t i = 0; i < size; i++)
+	{
+		char c = data[i];
 
-        switch (c)
-        {
-        case '\n':
-            vga_terminal_column = 0;
-            vga_terminal_row++;
-            break;
+		switch (c)
+		{
+		case '\n':
+			vga_terminal_column = 0;
+			vga_terminal_row++;
+			break;
 
-        case '\t':
-            vga_terminal_column = (vga_terminal_column + 8) & ~(8 - 1);
-            if (vga_terminal_column >= VGA_TERMINAL_WIDTH) {
-                vga_terminal_column = 0;
-                vga_terminal_row++;
-            }
-            break;
+		case '\t':
+			vga_terminal_column = (vga_terminal_column + 8) & ~(8 - 1);
+			if (vga_terminal_column >= VGA_TERMINAL_WIDTH)
+			{
+				vga_terminal_column = 0;
+				vga_terminal_row++;
+			}
+			break;
 
-        case '\b':
-            if (vga_terminal_column > 0) {
-                vga_terminal_column--;
-            } else if (vga_terminal_row > 0) {
-                vga_terminal_row--;
-                vga_terminal_column = VGA_TERMINAL_WIDTH - 1;
-            }
-            put_entry_at(' ', vga_terminal_color, vga_terminal_column, vga_terminal_row);
-            break;
+		case '\b':
+			if (vga_terminal_column > 0)
+			{
+				vga_terminal_column--;
+			}
+			else if (vga_terminal_row > 0)
+			{
+				vga_terminal_row--;
+				vga_terminal_column = VGA_TERMINAL_WIDTH - 1;
+			}
+			put_entry_at(' ', vga_terminal_color, vga_terminal_column, vga_terminal_row);
+			break;
 
-        default:
-            put_entry_at(c, vga_terminal_color, vga_terminal_column, vga_terminal_row);
-            vga_terminal_column++;
-            if (vga_terminal_column >= VGA_TERMINAL_WIDTH) {
-                vga_terminal_column = 0;
-                vga_terminal_row++;
-            }
-            break;
-        }
+		default:
+			put_entry_at(c, vga_terminal_color, vga_terminal_column, vga_terminal_row);
+			vga_terminal_column++;
+			if (vga_terminal_column >= VGA_TERMINAL_WIDTH)
+			{
+				vga_terminal_column = 0;
+				vga_terminal_row++;
+			}
+			break;
+		}
 
-        if (vga_terminal_row >= VGA_TERMINAL_HEIGHT) {
-            scroll_terminal();
-            vga_terminal_row = VGA_TERMINAL_HEIGHT - 1;
-        }
-    }
+		if (vga_terminal_row >= VGA_TERMINAL_HEIGHT)
+		{
+			scroll_terminal();
+			vga_terminal_row = VGA_TERMINAL_HEIGHT - 1;
+		}
+	}
 
-    update_cursor(vga_terminal_column, vga_terminal_row);
+	update_cursor(vga_terminal_column, vga_terminal_row);
 }
 
 static void clear(void)
@@ -141,6 +153,13 @@ void vga_terminal_init(uint32_t buffer_address, vga_terminal_color_enum_t foregr
 	vga_terminal_column = 0;
 	vga_terminal_color = entry_color(foreground_color, background_color);
 	vga_terminal_is_using = true;
+
+	kernel_context->video_state.is_text_mode = true;
+	kernel_context->video_state.lfb = DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS;
+	kernel_context->video_state.width = VGA_TERMINAL_WIDTH;
+	kernel_context->video_state.height = VGA_TERMINAL_HEIGHT;
+	kernel_context->video_state.bpp = 0;
+	kernel_context->video_state.pitch = 0;
 
 	clear();
 }

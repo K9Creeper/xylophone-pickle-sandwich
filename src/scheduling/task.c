@@ -13,15 +13,15 @@
 #include <kernel/stdlib.h>
 #include <kernel/util.h>
 
+#include <data-structures/kernel-context/kernel-context.h>
+
 #define MAX_NUM_OF_TASKS 256
 
 // scheduling.s
 extern void _task_start(task_t *task);
 
-// kheap.c
-extern heap_manager_t kernel_heap_manager;
-// paging.c
-extern paging_manager_t kernel_paging_manager;
+// kernel-main.c
+extern kernel_context_t* kernel_context;
 
 // kthread.c
 extern void kthread_entry(int argc, char *args[]);
@@ -120,10 +120,10 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
     task->parent = NULL;
 
     task->thread_eip = (uintptr_t)entry;
-    task->paging_manger = &kernel_paging_manager;
-    task->heap_manger = &kernel_heap_manager;
+    task->paging_manger = &kernel_context->paging_manager;
+    task->heap_manger = &kernel_context->heap_manager;
 
-    task->physical_cr3 = paging_manager_get_physical_address(&kernel_paging_manager, (uint32_t)kernel_paging_manager.page_directory);
+    task->physical_cr3 = paging_manager_get_physical_address(&kernel_context->paging_manager, (uint32_t)kernel_context->paging_manager.page_directory);
 
     task->ctx.eip = (uint32_t)kthread_entry;
 

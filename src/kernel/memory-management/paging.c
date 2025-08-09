@@ -7,33 +7,31 @@
 #include <memory-management/paging-manager.h>
 #include <memory-management/heap-manager.h>
 
-#include <stdio.h>
+#include <data-structures/kernel-context/kernel-context.h>
 
-// kheap.c
-extern heap_manager_t kernel_heap_manager;
-
-paging_manager_t kernel_paging_manager;
+// kernel-main.c
+extern kernel_context_t *kernel_context;
 
 bool paging_init(void)
 {
-    page_directory_t* pd = heap_manager_malloc(&kernel_heap_manager, sizeof(page_directory_t), true, NULL);
+    page_directory_t* pd = heap_manager_malloc(&kernel_context->heap_manager, sizeof(page_directory_t), true, NULL);
     paging_manager_init(
-        &kernel_paging_manager,
+        &kernel_context->paging_manager,
         pd,
-        &kernel_heap_manager,
+        &kernel_context->heap_manager,
         true
     );
 
     // true, true for the allocs
 
-    //paging_manager_allocate_range(&kernel_paging_manager, 0xC0000000, 0xC0000000 + 0x400000, true, true);
-    paging_manager_allocate_range(&kernel_paging_manager, 0xC0000000, 0xC0000000 + 0x400000, false, true);
+    paging_manager_allocate_range(&kernel_context->paging_manager, 0xC0000000, 0xC0000000 + 0x400000, true, true);
+    //paging_manager_allocate_range(&kernel_context->paging_manager, 0xC0000000, 0xC0000000 + 0x400000, false, true);
 
-    paging_manager_set_as_system_paging(&kernel_paging_manager, false);
-    paging_manager_enable(&kernel_paging_manager);
+    paging_manager_set_as_system_paging(&kernel_context->paging_manager, false);
+    paging_manager_enable(&kernel_context->paging_manager);
 
-    //paging_manager_identity_allocate_range(&kernel_paging_manager, 0x0, 0x100000, true, true);
-    paging_manager_identity_allocate_range(&kernel_paging_manager, 0x0, 0x100000, false, true);
+    paging_manager_identity_allocate_range(&kernel_context->paging_manager, 0x0, 0x100000, true, true);
+    //paging_manager_identity_allocate_range(&kernel_context->paging_manager, 0x0, 0x100000, false, true);
 
-    return kernel_paging_manager.is_initialized && kernel_paging_manager.is_enabled;
+    return kernel_context->paging_manager.is_initialized && kernel_context->paging_manager.is_enabled;
 }
