@@ -9,13 +9,13 @@
 
 typedef struct registers_s {
     uint32_t ds; // 0
-    //        4    8    16  20  24    28   32   36
+    //        4    8    12  16  20    24   28   32
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
 
-    //         40         44
+    //         36         40
     uint32_t interrupt, error;
 
-    //        48  52   56        60            64
+    //        44  48   52        56            60
     uint32_t eip, cs, eflags, usermode_esp, usermode_ss;
 } registers_t;
 
