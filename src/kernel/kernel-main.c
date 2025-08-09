@@ -11,9 +11,7 @@
 #include <memory.h>
 #include <multiboot2.h>
 
-#include <memory-spec.h>
-
-#include "misc-drivers/vga-terminal.h"
+#include "drivers/vga-terminal/vga-terminal.h"
 
 #include <kernel/util.h>
 
@@ -30,7 +28,7 @@ static void setup_heap(void);
 
 static void setup_fault_handlers(void);
 
-static void setup_vesa(void);
+static int setup_vesa(void);
 
 static void setup_drivers(void);
 
@@ -63,6 +61,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
     // allow user input
     
+    //setup_vesa();
 
     DISABLE_INTERRUPTS();
 
@@ -91,12 +90,14 @@ void setup_misc(void)
 }
 
 #include "descriptors/global-descriptor-table.h"
+#include "bios32/bios32.h"
 #include "descriptors/task-state-segment.h"
 #include "descriptors/interrupt-descriptor-table.h"
 
 void setup_descriptors(void)
 {
     kernel_global_descriptor_table_init();
+    bios32_init();
     kernel_global_descriptor_table_install();
 
     uint32_t esp;
@@ -117,7 +118,8 @@ void setup_early_heap(void)
 #include "memory-management/paging.h"
 void setup_paging(void)
 {
-    if (pmm_init(PHYSICAL_MEMORY_SIZE))
+     // (16 * # )MB
+    if (pmm_init(0x1000000 * 8U))
     {
         paging_init();
     }
@@ -196,4 +198,19 @@ static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, cons
 void enable_keyboard_input(void){
     vga_terminal_show_cursor(true);
     keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
+}
+
+#include "drivers/vesa/vesa.h"
+int setup_vesa(void){
+    if(vesa_init())
+        return 1;
+    
+    vga_terminal_destroy();
+
+    if(vesa_set_specs(1024, 768))
+    {
+        return 2;
+    }
+
+    return 0;
 }

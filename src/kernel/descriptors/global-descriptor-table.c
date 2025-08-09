@@ -33,9 +33,11 @@ void kernel_global_descriptor_table_init(void){
 void kernel_global_descriptor_table_install(void){
     kernel_global_descriptor_set_gate(NULL, NULL, NULL, NULL, NULL);
 
+    // kernel (32-bit)
     kernel_global_descriptor_set_gate(1, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_PL0, GDT_GRANULARITY);
     kernel_global_descriptor_set_gate(2, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_PL0, GDT_GRANULARITY);
 
+    // User mode (32-bit)
     kernel_global_descriptor_set_gate(3, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_PL3, GDT_GRANULARITY); 
     kernel_global_descriptor_set_gate(4, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_PL3, GDT_GRANULARITY);
 

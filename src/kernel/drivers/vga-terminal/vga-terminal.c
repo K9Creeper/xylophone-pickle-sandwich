@@ -38,9 +38,9 @@ static void update_cursor(int x, int y)
 	uint16_t pos = y * VGA_TERMINAL_WIDTH + x;
 
 	outportb(0x3D4, 0x0F);
-	outportb(0x3D5, (uint8_t) (pos & 0xFF));
+	outportb(0x3D5, (uint8_t)(pos & 0xFF));
 	outportb(0x3D4, 0x0E);
-	outportb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+	outportb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }
 
 static void put_char(char c)
@@ -52,33 +52,73 @@ static void put_char(char c)
 		if (++vga_terminal_row == VGA_TERMINAL_HEIGHT)
 			vga_terminal_row = 0;
 	}
-	update_cursor(vga_terminal_column, vga_terminal_row);
+}
+
+static void scroll_terminal(void)
+{
+    for (uint16_t y = 1; y < VGA_TERMINAL_HEIGHT; y++)
+    {
+        for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++)
+        {
+            vga_terminal_buffer[(y - 1) * VGA_TERMINAL_WIDTH + x] =
+                vga_terminal_buffer[y * VGA_TERMINAL_WIDTH + x];
+        }
+    }
+
+    // Clear the last line
+    for (uint16_t x = 0; x < VGA_TERMINAL_WIDTH; x++) {
+        put_entry_at(' ', vga_terminal_color, x, VGA_TERMINAL_HEIGHT - 1);
+    }
 }
 
 void vga_terminal_write(const char *data, uint32_t size)
 {
-	for (uint32_t i = 0; i < size; i++)
-	{
-		switch (data[i])
-		{
-		case '\n':
-			vga_terminal_row++;
-			vga_terminal_column = 0;
-			break;
+    for (uint32_t i = 0; i < size; i++)
+    {
+        char c = data[i];
 
-		case '\t':
-			vga_terminal_column += 8;
-			break;
+        switch (c)
+        {
+        case '\n':
+            vga_terminal_column = 0;
+            vga_terminal_row++;
+            break;
 
-		case '\b':
-			vga_terminal_column--;
-			put_char(' ');
-			break;
-		default:
-			put_char(data[i]);
-			break;
-		}
-	}
+        case '\t':
+            vga_terminal_column = (vga_terminal_column + 8) & ~(8 - 1);
+            if (vga_terminal_column >= VGA_TERMINAL_WIDTH) {
+                vga_terminal_column = 0;
+                vga_terminal_row++;
+            }
+            break;
+
+        case '\b':
+            if (vga_terminal_column > 0) {
+                vga_terminal_column--;
+            } else if (vga_terminal_row > 0) {
+                vga_terminal_row--;
+                vga_terminal_column = VGA_TERMINAL_WIDTH - 1;
+            }
+            put_entry_at(' ', vga_terminal_color, vga_terminal_column, vga_terminal_row);
+            break;
+
+        default:
+            put_entry_at(c, vga_terminal_color, vga_terminal_column, vga_terminal_row);
+            vga_terminal_column++;
+            if (vga_terminal_column >= VGA_TERMINAL_WIDTH) {
+                vga_terminal_column = 0;
+                vga_terminal_row++;
+            }
+            break;
+        }
+
+        if (vga_terminal_row >= VGA_TERMINAL_HEIGHT) {
+            scroll_terminal();
+            vga_terminal_row = VGA_TERMINAL_HEIGHT - 1;
+        }
+    }
+
+    update_cursor(vga_terminal_column, vga_terminal_row);
 }
 
 static void clear(void)
@@ -114,7 +154,9 @@ void vga_terminal_show_cursor(bool show)
 
 		outportb(0x3D4, 0x0B);
 		outportb(0x3D5, (inportb(0x3D5) & 0xE0) | 15);
-	}else{
+	}
+	else
+	{
 		outportb(0x3D4, 0x0A);
 		outportb(0x3D5, 0x20);
 	}
@@ -126,6 +168,9 @@ void vga_terminal_destroy(void)
 	vga_terminal_column = 0;
 
 	clear();
+
+	update_cursor(vga_terminal_row, vga_terminal_column);
+	vga_terminal_show_cursor(false);
 
 	vga_terminal_is_using = false;
 }
