@@ -184,8 +184,7 @@ padding:
     db 0x0
     db 0x0
 _gdt_entries:
-    ; 8 gdt entries
-    resb 64
+    times 64 db 0
 _gdt_ptr:
     dd 0x00000000
     dd 0x00000000
@@ -193,7 +192,7 @@ _idt_ptr:
     dd 0x00000000
     dd 0x00000000
 _in_reg_ptr:
-    resw 14
+    times 14*2 db 0
 _out_reg_ptr:
     dd 0xaaaaaaaa
     dd 0xaaaaaaaa

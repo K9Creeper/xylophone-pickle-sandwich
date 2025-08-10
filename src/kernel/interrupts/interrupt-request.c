@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <memory.h>
+#include <stdio.h>
 
 static void *irq_handles[KERNEL_INTERRUPT_REQUEST_MAX_HANNDLE_COUNT];
 
@@ -50,7 +51,6 @@ void irq_handler(registers_t regs)
     {
         outportb(0xA0, 0x20);
     }
-    outportb(0x20, 0x20);
 
     if (regs.interrupt >= 16 && regs.interrupt - 32 < 16)
     {
