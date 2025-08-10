@@ -29,6 +29,20 @@ kernel_context_t* kernel_context = &(kernel_context_t){
     }
 };
 
+static int32_t _syscall_0(uint32_t syscall) {
+    int32_t ret;
+    asm volatile("int $0x80" : "=a" (ret) : "a"(syscall));
+    return ret;
+}
+
+static int32_t _syscall_1(uint32_t syscall, uint32_t arg0) {
+    int32_t ret;
+    asm volatile("int $0x80" : "=a" (ret) : "a"(syscall), "b"(arg0));
+    return ret;
+}
+
+void syscall_print(const char* str);
+
 // Wrappers
 static void setup_misc(void);
 
@@ -75,8 +89,6 @@ void kernel_main(uint32_t addr, uint32_t magic)
     
     setup_vesa();
 
-    
-
     DISABLE_INTERRUPTS();
 
     setup_scheduling();
@@ -86,6 +98,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
     
 
     ENABLE_INTERRUPTS();
+
 halt:
     for (;;)
     {
@@ -180,9 +193,21 @@ void setup_fault_handlers(void)
 #include "drivers/pit/pit.h"
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/syscall/syscall.h"
+
+void syscall_print(const char* str) {
+    _syscall_1(SYSCALL_PRINT, (uint32_t)str);
+}
+
+void print(char* p){
+    printf("%s", p);
+}
+
 void setup_drivers(void)
 {
     syscall_init();
+
+    syscall_register(SYSCALL_PRINT, (void*)print);
+
     keyboard_init();
     pit_init(1000);
 }
@@ -214,17 +239,9 @@ void finish_scheduling(void)
     pit_add_handle((pit_handle_t)scheduling_schedule);
 }
 
-static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, const keyboard_map_t keyboard_map)
-{
-    if (keyboard_key.value != '\0')
-    {
-        vga_terminal_write(&keyboard_key.value, 1);
-    }
-}
-
 void enable_keyboard_input(void){
     vga_terminal_show_cursor(true);
-    keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
+    //keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
 }
 
 #include "drivers/vesa/vesa.h"
