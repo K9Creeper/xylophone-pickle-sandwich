@@ -76,6 +76,7 @@ void task_init(void){
 		task_table[i].state = TASK_STATE_STOPPED;
 		task_table[i].pid = -1;
 		task_table[i].next = NULL;
+        task_table[i].is_priority = false;
 	}
 }
 

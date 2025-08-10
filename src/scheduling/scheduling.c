@@ -48,38 +48,52 @@ void scheduling_init(void)
 }
 
 static int round_robin(uint32_t tick)
-{    
-    task_t *next;
+{
+    task_t *next = NULL;
+    task_queue_t* task_queue = &priority;
+    next = task_queue_peek(task_queue);
 
-    // Peek at the next task
-    next = task_queue_peek(&queue);
-    if (next == NULL) {
+    if(next == NULL){
+        task_queue = &queue;
+        next = task_queue_peek(task_queue);
+    }
+
+    if (next == NULL)
+    {
         printf("Scheduler: Queue is empty\n");
         PANIC();
         return -1;
     }
 
-    // Add current running task back to queue
-    if (current_task != NULL) {
-        task_queue_push(&queue, current_task);
+    if (current_task != NULL)
+    {
+        if (current_task->is_priority)
+            task_queue_push(&priority, current_task);
+        else
+            task_queue_push(&queue, current_task);
+
         current_task = NULL;
     }
 
     // Loop until we find a runnable task
-    do {
-        next = task_queue_pop(&queue);
-        if (next == NULL) {
+    do
+    {
+        next = task_queue_pop(task_queue);
+        if (next == NULL || (task_queue_peek(&priority) == NULL && task_queue_peek(&queue) == NULL))
+        {
             printf("Scheduler: No runnable tasks!\n");
             return -1;
         }
 
-        switch (next->state) {
+        switch (next->state)
+        {
         case TASK_STATE_RUNNING:
             // Found a runnable task
             break;
 
         case TASK_STATE_CREATED:
-            if (next->mode != TASK_MODE_KTHREAD) {
+            if (next->mode != TASK_MODE_KTHREAD)
+            {
                 kernel_task_state_segment_set_stack(0x10, next->kebp);
             }
             if (!(current_task && current_task->physical_cr3 == next->physical_cr3))
@@ -99,7 +113,8 @@ static int round_robin(uint32_t tick)
             continue;
 
         case TASK_STATE_SLEEPING:
-            if (next->sleep < tick) {
+            if (next->sleep < tick)
+            {
                 next->state = TASK_STATE_RUNNING;
                 break;
             }
@@ -108,7 +123,10 @@ static int round_robin(uint32_t tick)
         case TASK_STATE_BLOCKED:
         default:
             // Push back to queue if not runnable
-            task_queue_push(&queue, next);
+            if(next->is_priority)
+                task_queue_push(&priority, next);
+            else
+                task_queue_push(&queue, next);
             continue;
         }
         // Only exit loop if we found a runnable task
@@ -118,7 +136,8 @@ static int round_robin(uint32_t tick)
     current_task = next;
     system_current_task = current_task;
 
-    if (next->mode != TASK_MODE_KTHREAD) {
+    if (next->mode != TASK_MODE_KTHREAD)
+    {
         kernel_task_state_segment_set_stack(0x10, next->kebp);
     }
 
@@ -227,6 +246,7 @@ task_t *scheduling_consume(void)
 }
 
 // Wrapper
-int scheduling_yield(void){
+int scheduling_yield(void)
+{
     return scheduling_schedule(NULL, pit_get_tick());
 }

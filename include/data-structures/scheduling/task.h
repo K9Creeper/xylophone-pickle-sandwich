@@ -72,6 +72,8 @@ typedef struct task_s
     int yields;
     uint32_t blocked_count;
 
+    bool is_priority;
+
     struct task_s *parent;
     struct task_s *next;
     struct task_s *prev;
