@@ -71,6 +71,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
     setup_drivers();
 
     ENABLE_INTERRUPTS();
+
     enable_keyboard_input();
 
     char buffer[4];
@@ -78,7 +79,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
     {
         vga_terminal_write_string("Enter a graphical interface (y/n): ");
 
-        while (!terminal_get_input(buffer, 128));
+        while (!terminal_get_input(buffer, 128)){ __asm__ volatile("hlt"); }
 
         if (strcmp(buffer, "y") == 0){
             if(setup_vesa())
@@ -206,7 +207,7 @@ void setup_drivers(void)
 {
     syscalls_init();
     keyboard_init();
-    pit_init(1000);
+    pit_init(1000);    
 }
 
 // ------------------------------------------------------------
@@ -220,7 +221,19 @@ void kthread_idle(void)
 {
     while (true)
     {
-        __asm__ volatile("nop");
+        __asm__ volatile("hlt");
+    }
+}
+
+void kthread_busy(void)
+{
+    // WILL SLOW DOWN TICK COUNT
+    while (true)
+    {
+        for(int i = 0; i < 10000000; i++)
+        {
+
+        }
     }
 }
 
@@ -234,6 +247,7 @@ void setup_scheduling(void)
 
     kthread_register((kthread_entry_t)kthread_graphics, "graphics");
     kthread_register((kthread_entry_t)kthread_idle, "idlethread1");
+    kthread_register((kthread_entry_t)kthread_busy, "busythread");
 }
 
 void finish_scheduling(void)
@@ -242,6 +256,7 @@ void finish_scheduling(void)
         kthread_start("graphics", 0, NULL);
     
     kthread_start("idlethread1", 0, NULL);
+    kthread_start("busythread", 0, NULL);
     pit_add_handle((pit_handle_t)scheduling_schedule);
 }
 
@@ -291,7 +306,7 @@ int setup_vesa(void)
     {
         vga_terminal_write_string("Choose a mode: ");
 
-        while (!terminal_get_input(buffer, 16));
+        while (!terminal_get_input(buffer, 16)){ __asm__ volatile("hlt"); }
 
         int mode = atoi(buffer);
         

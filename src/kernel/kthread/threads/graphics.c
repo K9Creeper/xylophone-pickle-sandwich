@@ -120,5 +120,7 @@ void kthread_graphics(void)
         graphics_paint_rect(x, y, size, size, color, 255);
 
         graphics_swap_buffers(true);
+
+        sleep(16);
     }
 }

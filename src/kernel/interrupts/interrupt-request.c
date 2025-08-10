@@ -15,7 +15,7 @@ void kernel_interrupt_request_set_handle(uint16_t idx, kernel_interrupt_request_
 {
     if (idx >= 0 && idx < KERNEL_INTERRUPT_REQUEST_MAX_HANNDLE_COUNT)
     {
-        irq_handles[idx] = (void*)handle;
+        irq_handles[idx] = (void *)handle;
     }
 }
 
@@ -47,20 +47,12 @@ extern void kernel_interrupt_descriptor_set_gate(uint8_t num, uint32_t base, uin
 
 void irq_handler(registers_t regs)
 {
-    if (regs.interrupt >= 40)
+    if (regs.interrupt - 32 < 16)
     {
-        outportb(0xA0, 0x20);
-    }
-
-    if (regs.interrupt >= 16 && regs.interrupt - 32 < 16)
-    {
-        if (irq_handles[regs.interrupt - 32])
-        {
-            kernel_interrupt_request_handle_t handler = (kernel_interrupt_request_handle_t)(irq_handles[regs.interrupt - 32]);
-            if (handler != NULL)
-            {
-                handler(&regs);
-            }
+        kernel_interrupt_request_handle_t handler = (kernel_interrupt_request_handle_t)(irq_handles[regs.interrupt - 32]);
+        if (handler != NULL)
+        {   
+            handler(&regs);
         }
     }
 }

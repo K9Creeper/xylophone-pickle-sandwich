@@ -12,15 +12,13 @@
 
 static pit_t system_pit;
 
-static void* s_handle;
+static void* s_handle = NULL;
 
+// Tick count slows down under load?
 static void timer_handle(registers_t* regs){
     system_pit.ticks++;
 
-    outportb(0x20, 0x20);
-
-    if(system_pit.ticks % system_pit.hz_frequency == 0)
-        printf("Been a second\n");
+    IRQ_EOI(0);
 
     if(s_handle != NULL){
         if((((pit_handle_t)(s_handle))(regs, system_pit.ticks)))
@@ -28,6 +26,8 @@ static void timer_handle(registers_t* regs){
                 // Bad..
         }
     }
+
+    
 }
 
 void pit_init(uint16_t hz){
@@ -47,13 +47,8 @@ void pit_set_frequency(uint16_t hz){
 
     uint16_t divisor = 1193180 / hz;
 
-    printf("divisor: %D\n", divisor); // prints correctly
-
-    uint8_t l = (uint8_t)(divisor);
-	uint8_t h = (uint8_t)( (divisor>>8));
-    printf("divisorl: %D\n", l);
-    printf("divisorh: %D\n", h);
-
+    uint8_t l = (uint8_t)(divisor & 0xFF);
+	uint8_t h = (uint8_t)( (divisor>>8) & 0xFF);
     outportb(0x43, 0x36);
     outportb(0x40, l);
 	outportb(0x40, h);

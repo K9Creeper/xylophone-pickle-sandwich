@@ -9,6 +9,7 @@
 #include <memory.h>
 
 #include <data-structures/kernel/kernel-interrupts.h>
+#include "../../interrupts/interrupt-request.h"
 
 #define NUM_OF_KEYBOARD_HANDLES 16
 
@@ -145,9 +146,6 @@ static keyboard_key_t keymap[128] = {
 };
 static keyboard_input_handle_t input_handles[NUM_OF_KEYBOARD_HANDLES];
 
-// interrupt-request.c
-extern void kernel_interrupt_request_set_handle(uint16_t idx, kernel_interrupt_request_handle_t handle);
-
 static void keyboard_handler(registers_t *regs);
 
 void keyboard_init(void)
@@ -211,4 +209,6 @@ static void keyboard_handler(registers_t *regs)
             ((keyboard_input_handle_t)(input_handles[i]))(keymap[scancode], (const keyboard_map_t)keymap);
         }
     }
+
+    IRQ_EOI(1);
 }

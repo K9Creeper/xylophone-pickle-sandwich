@@ -15,7 +15,7 @@ typedef struct pit_s{
     bool is_initialized;
 
     uint16_t hz_frequency;
-    uint32_t ticks;
+    volatile uint32_t ticks;
 }pit_t;
 
 #endif
