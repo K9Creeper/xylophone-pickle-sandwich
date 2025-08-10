@@ -47,10 +47,11 @@ void syscall_print(const char *str);
 
 // Setup function declarations
 static void setup_misc(void);
-static void setup_descriptors(void);
 static void setup_early_heap(void);
 static void setup_paging(void);
 static void setup_heap(void);
+static void setup_gdt(void);
+static void setup_idt(void);
 static void setup_fault_handlers(void);
 static int setup_vesa(void);
 static void setup_drivers(void);
@@ -63,14 +64,17 @@ void kernel_main(uint32_t addr, uint32_t magic)
     DISABLE_INTERRUPTS();
 
     setup_misc();
-    setup_descriptors();
-    setup_fault_handlers();
-    setup_early_heap();
-    setup_paging();
-    setup_heap();
+    setup_gdt();
+    setup_idt();
+    //setup_early_heap();
+    //setup_paging();
+    //setup_heap();
     setup_drivers();
+    //setup_fault_handlers();
 
     ENABLE_INTERRUPTS();
+
+    /*
 
     enable_keyboard_input();
 
@@ -79,17 +83,22 @@ void kernel_main(uint32_t addr, uint32_t magic)
     {
         vga_terminal_write_string("Enter a graphical interface (y/n): ");
 
-        while (!terminal_get_input(buffer, 128)){ __asm__ volatile("hlt"); }
+        while (!terminal_get_input(buffer, 128))
+        {
+            __asm__ volatile("hlt");
+        }
 
-        if (strcmp(buffer, "y") == 0){
-            if(setup_vesa())
+        if (strcmp(buffer, "y") == 0)
+        {
+            if (setup_vesa())
             {
                 vga_terminal_write_string("Graphical interface is unavaliable\n");
                 continue;
             }
             break;
         }
-        else if (strcmp(buffer, "n") == 0){
+        else if (strcmp(buffer, "n") == 0)
+        {
             break;
         }
     }
@@ -98,7 +107,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
     setup_scheduling();
     finish_scheduling();
     ENABLE_INTERRUPTS();
-
+*/
 halt:
     for (;;)
     {
@@ -112,7 +121,7 @@ halt:
 
 void setup_misc(void)
 {
-    kernel_misc_drivers_serial_com1_init();
+    //kernel_misc_drivers_serial_com1_init();
     vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_LIGHT_BLUE, VGA_TERMINAL_COLOR_DARK_GREY);
     vga_terminal_show_cursor(false);
 }
@@ -123,17 +132,18 @@ void setup_misc(void)
 #include "bios32/bios32.h"
 #include "descriptors/task-state-segment.h"
 #include "descriptors/interrupt-descriptor-table.h"
-
-void setup_descriptors(void)
+static void setup_gdt(void)
 {
     kernel_global_descriptor_table_init();
-    bios32_init();
+    //bios32_init();
     kernel_global_descriptor_table_install();
 
-    uint32_t esp;
-    get_esp(esp);
-    kernel_task_state_segment_int(5, 0x10, esp);
-
+    //uint32_t esp;
+    //get_esp(esp);
+    //kernel_task_state_segment_int(5, 0x10, esp);
+}
+static void setup_idt(void)
+{
     kernel_interrupt_descriptor_table_init();
     kernel_interrupt_descriptor_table_install();
 }
@@ -202,12 +212,19 @@ void setup_fault_handlers(void)
 #include "drivers/pit/pit.h"
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/syscalls/syscalls.h"
+void test(registers_t *d, uint32_t t)
+{
+    if(t % 1000 == 0)
+        vga_terminal_write_string("Tick %d\n", t);
+}
 
 void setup_drivers(void)
 {
-    syscalls_init();
-    keyboard_init();
-    pit_init(1000);    
+    //syscalls_init();
+    //keyboard_init();
+    pit_init(1000);
+
+    pit_add_handle((pit_handle_t)test);
 }
 
 // ------------------------------------------------------------
@@ -221,42 +238,40 @@ void kthread_idle(void)
 {
     while (true)
     {
+        scheduling_yield();
         __asm__ volatile("hlt");
     }
 }
 
-void kthread_busy(void)
+void kthread_aids(void)
 {
-    // WILL SLOW DOWN TICK COUNT
     while (true)
     {
-        for(int i = 0; i < 10000000; i++)
-        {
-
-        }
+        __asm__ volatile("hlt");
     }
 }
 
+static int vga_terminal_keyboard_input_handle_index;
 void setup_scheduling(void)
 {
     scheduling_init();
 
-    syscalls_register(SYSCALL_EXIT, (void*)scheduling_exit);
-    syscalls_register(SYSCALL_SLEEP, (void*)scheduling_sleep);
-    syscalls_register(SYSCALL_YIELD, (void*)scheduling_yield);
+    syscalls_register(SYSCALL_EXIT, (void *)scheduling_exit);
+    syscalls_register(SYSCALL_SLEEP, (void *)scheduling_sleep);
+    syscalls_register(SYSCALL_YIELD, (void *)scheduling_yield);
 
     kthread_register((kthread_entry_t)kthread_graphics, "graphics");
     kthread_register((kthread_entry_t)kthread_idle, "idlethread1");
-    kthread_register((kthread_entry_t)kthread_busy, "busythread");
+    kthread_register((kthread_entry_t)kthread_aids, "aids");
 }
-
 void finish_scheduling(void)
 {
-    if(!kernel_context->video_state.is_text_mode)
+    if (!kernel_context->video_state.is_text_mode)
         kthread_start("graphics", 0, NULL);
-    
+
     kthread_start("idlethread1", 0, NULL);
-    kthread_start("busythread", 0, NULL);
+    kthread_start("aids", 0, NULL);
+    
     pit_add_handle((pit_handle_t)scheduling_schedule);
 }
 
@@ -273,7 +288,6 @@ static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, cons
         vga_terminal_write(&keyboard_key.value, 1);
     }
 }
-static int vga_terminal_keyboard_input_handle_index;
 void enable_keyboard_input(void)
 {
     vga_terminal_show_cursor(true);
@@ -291,13 +305,14 @@ int setup_vesa(void)
 
     vga_terminal_clear();
 
-    vesa_mode_t* vesa_modes = vesa_get_all_modes();
-    
+    vesa_mode_t *vesa_modes = vesa_get_all_modes();
+
     vga_terminal_write_string("VESA Options:\n");
-    for(int i = 0; i < VESA_MODE_SIZE; i++){
+    for (int i = 0; i < VESA_MODE_SIZE; i++)
+    {
         if (vesa_modes[i].number == 0 || vesa_modes[i].info.bpp != 32)
             continue;
-        
+
         vga_terminal_write_string("Mode: %d %dx%d\n", vesa_modes[i].number, vesa_modes[i].info.width, vesa_modes[i].info.height);
     }
 
@@ -306,11 +321,15 @@ int setup_vesa(void)
     {
         vga_terminal_write_string("Choose a mode: ");
 
-        while (!terminal_get_input(buffer, 16)){ __asm__ volatile("hlt"); }
+        while (!terminal_get_input(buffer, 16))
+        {
+            __asm__ volatile("hlt");
+        }
 
         int mode = atoi(buffer);
-        
-        if(vesa_set_mode(mode)) continue;
+
+        if (vesa_set_mode(mode))
+            continue;
 
         break;
     }

@@ -13,6 +13,8 @@
 #include <registers.h>
 #include <data-structures/kernel/kernel-interrupts.h>
 
+#define ISR_EOI(idx) do{ if ((idx) >= 0x28) outportb(0xA0, 0x20); outportb(0x20, 0x20); }while(0)
+
 extern void kernel_interrupt_service_set_handle(uint16_t idx, kernel_interrupt_service_handle_t handle);
 extern void kernel_interrupt_service_remove_handle(uint16_t idx);
 

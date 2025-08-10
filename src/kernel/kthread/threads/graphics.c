@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <syscall.h>
+#include <kernel/util.h>
 
 // kernel-main.c
 extern kernel_context_t *kernel_context;

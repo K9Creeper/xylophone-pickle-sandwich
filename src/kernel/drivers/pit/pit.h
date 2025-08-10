@@ -8,8 +8,6 @@
 #include <stdint.h>
 #include <data-structures/drivers/pit.h>
 
-#define PIT_HANDLE_MAX_COUNT 4
-
 extern void pit_init(uint16_t hz);
 
 extern void pit_set_frequency(uint16_t hz);

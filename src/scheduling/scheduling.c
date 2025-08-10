@@ -47,112 +47,79 @@ void scheduling_init(void)
     is_initalized = true;
 }
 
-static int round_robin(uint32_t tick)
-{
-    task_t *next = NULL;
+static inline void requeue_task(task_t *task) {
+    if (task->is_priority)
+        task_queue_push(&priority, task);
+    else
+        task_queue_push(&queue, task);
+}
 
-    // If current_task exists, requeue it first
-    if (current_task != NULL)
-    {
-        if (current_task->is_priority)
-            task_queue_push(&priority, current_task);
-        else
-            task_queue_push(&queue, current_task);
+static task_t *get_next_task(void) {
+    task_t *t = task_queue_pop(&priority);
+    if (!t)
+        t = task_queue_pop(&queue);
+    return t;
+}
+
+static int round_robin(uint32_t tick) {
+    task_t *next;
+
+    if (current_task) {
+        requeue_task(current_task);
         current_task = NULL;
     }
 
-    // Try to pick next task from priority queue first
-    next = task_queue_pop(&priority);
-    if (next == NULL)
-    {
-        // If no priority task, try normal queue
-        next = task_queue_pop(&queue);
-    }
-
-    // If no tasks available in either queue and no current task, panic
-    if (next == NULL)
-    {
-        printf("Scheduler: No runnable tasks!\n");
-        PANIC();
-        return -1;
-    }
-
-    // Loop until a runnable task is found
-    while (1)
-    {
-        switch (next->state)
-        {
+    while ((next = get_next_task()) != NULL) {
+        switch (next->state) {
         case TASK_STATE_RUNNING:
-            // Runnable task found, break out
             goto found_runnable;
 
         case TASK_STATE_CREATED:
-            // Prepare newly created task to run
             if (next->mode != TASK_MODE_KTHREAD)
-            {
                 kernel_task_state_segment_set_stack(0x10, next->kebp);
-            }
-            if (!(current_task && current_task->physical_cr3 == next->physical_cr3))
+
+            if (!current_task || current_task->physical_cr3 != next->physical_cr3)
                 paging_manager_swap_system_page_directory(next->physical_cr3, true);
 
             current_task = next;
-            system_current_task = current_task;
-
+            system_current_task = next;
             task_start(next);
-            printf("Hello IS BAD\n");
-            // Should never return here
-            break;
-
-        case TASK_STATE_ZOMBIE:
-            // TODO: Cleanup zombie tasks here if possible
-            // Skip and fetch next task
+            // task_start should not return; if it does, continue loop
             break;
 
         case TASK_STATE_SLEEPING:
-            if (next->sleep <= tick)
-            {
+            if (next->sleep <= tick) {
                 next->state = TASK_STATE_RUNNING;
                 goto found_runnable;
             }
-            // Fall through to requeue
+            // fallthrough to requeue
+
+        case TASK_STATE_ZOMBIE:
+
+        // TODO: add a cleanup operation...
 
         case TASK_STATE_BLOCKED:
         default:
-            // Not runnable, requeue and pick next task
-            if (next->is_priority)
-                task_queue_push(&priority, next);
-            else
-                task_queue_push(&queue, next);
+            requeue_task(next);
             break;
-        }
-
-        // Pick next task from priority or normal queue
-        next = task_queue_pop(&priority);
-        if (next == NULL)
-            next = task_queue_pop(&queue);
-
-        if (next == NULL)
-        {
-            // No runnable tasks available
-            printf("Scheduler: No runnable tasks!\n");
-            return -1;
         }
     }
 
-found_runnable:
-    // Set up context for next task only if different from current
-    if (current_task != next)
-    {
-        if (next->mode != TASK_MODE_KTHREAD)
-        {
-            kernel_task_state_segment_set_stack(0x10, next->kebp);
-        }
+    // No runnable tasks found
+    printf("Scheduler: No runnable tasks!\n");
+    PANIC();
+    return -1;
 
-        if (!(current_task && current_task->physical_cr3 == next->physical_cr3))
+found_runnable:
+    if (current_task != next) {
+        if (next->mode != TASK_MODE_KTHREAD)
+            kernel_task_state_segment_set_stack(0x10, next->kebp);
+
+        if (!current_task || current_task->physical_cr3 != next->physical_cr3)
             paging_manager_swap_system_page_directory(next->physical_cr3, true);
 
         current_task = next;
-        system_current_task = current_task;
+        system_current_task = next;
     }
 
     return 0;
@@ -183,6 +150,9 @@ int scheduling_schedule(registers_t *__reg_ /*unused*/, uint32_t tick)
     }
 
     current_task->yields++;
+
+    if(__reg_ != NULL && tick % 1000 == 0)
+    printf("1 sec\n");
 
     INTERRUPT_SAFE_BLOCK({
         _task_save_context(current_task);

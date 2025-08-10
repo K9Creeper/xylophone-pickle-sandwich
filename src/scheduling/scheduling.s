@@ -85,5 +85,5 @@ _start_pcb_skip:
 
     movw	156(%eax),%ds /* ds */
     movw	156(%eax),%es /* ds */
-    
+
     iret

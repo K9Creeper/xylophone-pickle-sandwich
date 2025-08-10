@@ -209,6 +209,4 @@ static void keyboard_handler(registers_t *regs)
             ((keyboard_input_handle_t)(input_handles[i]))(keymap[scancode], (const keyboard_map_t)keymap);
         }
     }
-
-    IRQ_EOI(1);
 }
