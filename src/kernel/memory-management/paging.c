@@ -7,7 +7,7 @@
 #include <memory-management/paging-manager.h>
 #include <memory-management/heap-manager.h>
 
-#include <data-structures/kernel-context/kernel-context.h>
+#include <data-structures/kernel/kernel-context.h>
 
 // kernel-main.c
 extern kernel_context_t *kernel_context;

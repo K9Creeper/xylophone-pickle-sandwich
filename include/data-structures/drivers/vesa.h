@@ -52,10 +52,10 @@ typedef struct vbe_mode_info_s
     uint8_t reserved1[206];
 } __attribute__((packed)) vbe_mode_info_t;
 
-typedef struct vea_mode_s
+typedef struct vesa_mode_s
 {
     uint32_t number;
     vbe_mode_info_t info;
-}vea_mode_t;
+}vesa_mode_t;
 
 #endif

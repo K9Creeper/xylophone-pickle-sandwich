@@ -13,7 +13,7 @@
 #include <kernel/stdlib.h>
 #include <kernel/util.h>
 
-#include <data-structures/kernel-context/kernel-context.h>
+#include <data-structures/kernel/kernel-context.h>
 
 #define MAX_NUM_OF_TASKS 256
 

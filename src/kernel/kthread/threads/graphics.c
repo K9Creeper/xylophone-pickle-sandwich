@@ -5,9 +5,10 @@
 #include <graphics/framebuffer.h>
 #include <graphics/graphics.h>
 
-#include <data-structures/kernel-context/kernel-context.h>
+#include <data-structures/kernel/kernel-context.h>
 
 #include <stdio.h>
+#include <syscall.h>
 
 // kernel-main.c
 extern kernel_context_t *kernel_context;

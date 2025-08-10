@@ -8,7 +8,7 @@
 #include <registers.h>
 #include <memory.h>
 
-#include <data-structures/kernel-interrupts/kernel-interrupts.h>
+#include <data-structures/kernel/kernel-interrupts.h>
 
 #define NUM_OF_KEYBOARD_HANDLES 16
 
@@ -178,8 +178,8 @@ void keyboard_remove_input_handle(int index){
     input_handles[index] = NULL;
 }
 
-const keyboard_map_t keyboard_get_keymap(void){
-    return (const keyboard_map_t)keymap;
+keyboard_key_t keyboard_get_key(keyboard_keycode_t keycode){
+    return keymap[keycode];
 }
 
 static void keyboard_handler(registers_t *regs)

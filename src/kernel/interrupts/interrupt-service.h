@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 #include <registers.h>
-#include <data-structures/kernel-interrupts/kernel-interrupts.h>
+#include <data-structures/kernel/kernel-interrupts.h>
 
 extern void kernel_interrupt_service_set_handle(uint16_t idx, kernel_interrupt_service_handle_t handle);
 extern void kernel_interrupt_service_remove_handle(uint16_t idx);

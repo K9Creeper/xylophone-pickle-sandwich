@@ -23,7 +23,7 @@ char *strtok(char *str, const char *delim, char *out)
   {
     out[i] = str[i];
   }
-  
+
   {
     out[i] = '\0';
   }
@@ -59,58 +59,79 @@ char *strtok(char *str, const char *delim, char *out)
   return token;
 }
 
-int memcmp(const void *s1, const void *s2, uint32_t n) {
-    const unsigned char *p1 = s1;
-    const unsigned char *p2 = s2;
-
-    for (uint32_t i = 0; i < n; i++) {
-        if (p1[i] != p2[i])
-            return (int)p1[i] - (int)p2[i];
-    }
-    return 0;
+int strcmp(const char *s1, const char *s2)
+{
+  while (*s1 && (*s1 == *s2))
+  {
+    s1++;
+    s2++;
+  }
+  return (unsigned char)*s1 - (unsigned char)*s2;
 }
 
-bool equal(const char* a, const char* b){
-  int len = strlen(a);
-  if(len == strlen(b))
+int memcmp(const void *s1, const void *s2, uint32_t n)
+{
+  const unsigned char *p1 = s1;
+  const unsigned char *p2 = s2;
+
+  for (uint32_t i = 0; i < n; i++)
   {
-    for(int i = 0; i < len; i++)
+    if (p1[i] != p2[i])
+      return (int)p1[i] - (int)p2[i];
+  }
+  return 0;
+}
+
+bool equal(const char *a, const char *b)
+{
+  int len = strlen(a);
+  if (len == strlen(b))
+  {
+    for (int i = 0; i < len; i++)
     {
-      if(a[i] != b[i])
+      if (a[i] != b[i])
         return false;
     }
 
-    if(len > 0)
+    if (len > 0)
       return true;
   }
 
   return false;
 }
 
-int find(const char *str, const char *f) {
-  if (str == 0 || f == 0) {
+int find(const char *str, const char *f)
+{
+  if (str == 0 || f == 0)
+  {
     return -1;
   }
 
-  if (*f == '\0') {
+  if (*f == '\0')
+  {
     return 0;
   }
 
   int str_len = strlen(str);
   int f_len = strlen(f);
 
-  if (f_len > str_len) {
+  if (f_len > str_len)
+  {
     return -1;
   }
 
-  for (int i = 0; i <= str_len - f_len; ++i) {
+  for (int i = 0; i <= str_len - f_len; ++i)
+  {
     int j;
-    for (j = 0; j < f_len; ++j) {
-      if (str[i + j] != f[j]) {
+    for (j = 0; j < f_len; ++j)
+    {
+      if (str[i + j] != f[j])
+      {
         break;
       }
     }
-    if (j == f_len) {
+    if (j == f_len)
+    {
       return i;
     }
   }
@@ -203,4 +224,64 @@ void uitoa(uint32_t num, char *str, int base)
   }
 
   return;
+}
+
+int atoi(const char *str)
+{
+  int result = 0;
+  int sign = 1;
+
+  while (*str == ' ' || *str == '\t' || *str == '\n' ||
+         *str == '\v' || *str == '\f' || *str == '\r')
+  {
+    str++;
+  }
+
+  if (*str == '-')
+  {
+    sign = -1;
+    str++;
+  }
+  else if (*str == '+')
+  {
+    str++;
+  }
+
+  while (*str >= '0' && *str <= '9')
+  {
+    result = result * 10 + (*str - '0');
+    str++;
+  }
+
+  return sign * result;
+}
+
+uint32_t uatoi(const char *str)
+{
+  uint32_t result = 0;
+  int sign = 1;
+
+  while (*str == ' ' || *str == '\t' || *str == '\n' ||
+         *str == '\v' || *str == '\f' || *str == '\r')
+  {
+    str++;
+  }
+
+  if (*str == '-')
+  {
+    sign = -1;
+    str++;
+  }
+  else if (*str == '+')
+  {
+    str++;
+  }
+
+  while (*str >= '0' && *str <= '9')
+  {
+    result = result * 10 + (*str - '0');
+    str++;
+  }
+
+  return sign * result;
 }

@@ -10,7 +10,7 @@
 
 #include <memory.h>
 
-#include <data-structures/kernel-context/kernel-context.h>
+#include <data-structures/kernel/kernel-context.h>
 
 // kernel-main.c
 extern kernel_context_t *kernel_context;
@@ -143,6 +143,8 @@ static void clear(void)
 			vga_terminal_buffer[index] = entry(' ', vga_terminal_color);
 		}
 	}
+	vga_terminal_row = 0;
+	vga_terminal_column = 0;
 }
 
 void vga_terminal_init(uint32_t buffer_address, vga_terminal_color_enum_t foreground_color, vga_terminal_color_enum_t background_color)
@@ -192,6 +194,11 @@ void vga_terminal_destroy(void)
 	vga_terminal_show_cursor(false);
 
 	vga_terminal_is_using = false;
+}
+
+// wrapper
+void vga_terminal_clear(void){
+	clear();
 }
 
 void vga_terminal_write_string(const char *format, ...)

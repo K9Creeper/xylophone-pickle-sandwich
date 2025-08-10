@@ -3,7 +3,7 @@
 /// @brief This file defines the functions of the task queue handling.
 
 #include <scheduling/task-queue.h>
-#include <spinlock/spinlock.h>
+#include <spinlock.h>
 
 void task_queue_init(task_queue_t *queue)
 {

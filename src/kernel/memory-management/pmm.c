@@ -5,7 +5,7 @@
 #include "pmm.h"
 
 #include <memory-management/physical-memory-manager.h>
-#include <data-structures/kernel-context/kernel-context.h>
+#include <data-structures/kernel/kernel-context.h>
 
 // kernel-main.c
 extern kernel_context_t *kernel_context;

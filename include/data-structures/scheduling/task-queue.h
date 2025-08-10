@@ -6,7 +6,7 @@
 #define TASK_QUEUE_H
 
 #include "task.h"
-#include <data-structures/spinlock/spinlock.h>
+#include <data-structures/spinlock.h>
 
 typedef struct task_queue_s {
 	task_t* _list;

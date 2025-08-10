@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include <registers.h>
-#include <data-structures/kernel-interrupts/kernel-interrupts.h>
+#include <data-structures/kernel/kernel-interrupts.h>
 
 extern void kernel_interrupt_request_set_handle(uint16_t idx, kernel_interrupt_request_handle_t handle);
 extern void kernel_interrupt_request_remove_handle(uint16_t idx);

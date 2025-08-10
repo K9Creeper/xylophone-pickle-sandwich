@@ -2,7 +2,7 @@
 /// spinlock.c
 /// @brief This file defines the functions of the spinlock.
 
-#include <spinlock/spinlock.h>
+#include <spinlock.h>
 
 void spinlock_lock(spinlock_t* spinlock){
     while (atomic_exchange_explicit(spinlock, true, memory_order_acquire)) {

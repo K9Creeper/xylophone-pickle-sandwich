@@ -1,6 +1,6 @@
-.extern syscall_handlers /* void** */
-.global _handle_syscall_interrupt
-_handle_syscall_interrupt:
+.extern syscalls_handlers /* void** */
+.global _handle_syscalls_interrupt
+_handle_syscalls_interrupt:
     movl 4(%esp), %edx        /* registers_t */
 
     movl 32(%edx), %ebx       /* index (eax) */
@@ -11,7 +11,7 @@ _handle_syscall_interrupt:
     pushl 28(%edx)            /* ecx */
     pushl 20(%edx)            /* ebx */
 
-    movl syscall_handlers(, %ebx, 4), %ecx
+    movl syscalls_handlers(, %ebx, 4), %ecx
     call *%ecx
 
     popl %ebx

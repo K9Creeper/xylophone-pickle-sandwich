@@ -9,17 +9,14 @@
 
 #include "../../bios32/bios32.h"
 
-#include <data-structures/kernel-context/kernel-context.h>
-
-// Not sure how many there actually are...
-#define VESA_MODE_SIZE 64
+#include <data-structures/kernel/kernel-context.h>
 
 // kernel-main.c
 extern kernel_context_t* kernel_context;
 
 static vbe_info_block_t vbe_info;
-static vea_mode_t vesa_modes[VESA_MODE_SIZE];
-static vea_mode_t current_mode;
+static vesa_mode_t vesa_modes[VESA_MODE_SIZE];
+static vesa_mode_t current_mode;
 
 static void load_vbe()
 {
@@ -42,7 +39,7 @@ static void vesa_get_mode(uint16_t mode, vbe_mode_info_t *mode_info)
     memcpy((unsigned char *)(mode_info), (unsigned char *)(0x9000), sizeof(vbe_mode_info_t));
 }
 
-static vea_mode_t *vesa_get_modes(void)
+static vesa_mode_t *vesa_get_modes(void)
 {
     vbe_info_block_t *block = &vbe_info;
     vbe_mode_info_t tmp;
@@ -161,9 +158,14 @@ int vesa_set_specs(uint32_t width, uint32_t height)
     return 1;
 }
 
-vea_mode_t *vesa_current_mode(void)
+vesa_mode_t *vesa_current_mode(void)
 {
     return &current_mode;
+}
+
+vesa_mode_t* vesa_get_all_modes(void)
+{
+    return vesa_modes;
 }
 
 void vesa_map_buffer(void)

@@ -7,7 +7,7 @@
 #include <memory-management/heap-manager.h>
 #include <memory-management/paging-manager.h>
 
-#include <data-structures/kernel-context/kernel-context.h>
+#include <data-structures/kernel/kernel-context.h>
 
 // linker.ld
 extern uint32_t linkerld_endofkernel;
