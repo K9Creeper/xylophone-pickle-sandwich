@@ -21,7 +21,7 @@ extern void _task_save_context(task_t*);
 
 static task_queue_t ready_queue;
 static task_queue_t priority_ready_queue;
-static ordered_array_t sleep_queue; // must support sorted insert by task->sleep
+static ordered_array_t sleep_queue; // FIXME: This is a very slow implementation O(n)
 static task_queue_t blocked_queue;
 static task_queue_t zombie_queue;
 
