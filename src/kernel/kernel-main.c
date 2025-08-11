@@ -28,23 +28,6 @@ kernel_context_t *kernel_context = &(kernel_context_t){
         0, 0,
         DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS}};
 
-// Syscall helpers
-static int32_t _syscall_0(uint32_t syscall)
-{
-    int32_t ret;
-    asm volatile("int $0x80" : "=a"(ret) : "a"(syscall));
-    return ret;
-}
-
-static int32_t _syscall_1(uint32_t syscall, uint32_t arg0)
-{
-    int32_t ret;
-    asm volatile("int $0x80" : "=a"(ret) : "a"(syscall), "b"(arg0));
-    return ret;
-}
-
-void syscall_print(const char *str);
-
 // Setup function declarations
 static void setup_misc(void);
 static void setup_early_heap(void);
@@ -222,7 +205,7 @@ void setup_drivers(void)
     syscalls_init();
     keyboard_init();
     mouse_init();
-    pit_init(1000);
+    pit_init(100);
 
     // pit_add_handle((pit_handle_t)test);
 }
@@ -240,7 +223,7 @@ void kthread_idle(void)
 {
     while (true)
     {
-        scheduling_yield();
+        __asm__ volatile("hlt");
     }
 }
 
