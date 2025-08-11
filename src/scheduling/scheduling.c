@@ -7,7 +7,7 @@
 #include <scheduling/task.h>
 #include <scheduling/task-queue.h>
 #include <scheduling/task-cleaner.h>
-#include <ordered-array.h>
+#include <mini-heap.h>
 
 #include <kernel/util.h>
 #include "../kernel/drivers/pit/pit.h"
@@ -16,12 +16,12 @@
 
 extern void kernel_task_state_segment_set_stack(uint32_t kss, uint32_t kesp);
 
-extern void _task_restore_context(task_t*);
-extern void _task_save_context(task_t*);
+extern void _task_restore_context(task_t *);
+extern void _task_save_context(task_t *);
 
 static task_queue_t ready_queue;
 static task_queue_t priority_ready_queue;
-static ordered_array_t sleep_queue; // FIXME: This is a very slow implementation O(n)
+static mini_heap_t sleep_queue;
 static task_queue_t blocked_queue;
 static task_queue_t zombie_queue;
 
@@ -56,15 +56,14 @@ void scheduling_init(void)
     task_queue_init(&blocked_queue);
     task_queue_init(&zombie_queue);
 
-    ordered_array_init(&sleep_queue, MAX_SLEEP_TASKS, sleep_queue_is_less_than);
-    ordered_array_place(&sleep_queue, sleep_array_storage);
-
+    mini_heap_init(&sleep_queue, (type_t*)sleep_array_storage, MAX_SLEEP_TASKS, sleep_queue_is_less_than);
+    
     is_initalized = true;
 }
 
 static inline void enqueue_ready(task_t *task)
 {
-    if(task->state != TASK_STATE_CREATED)
+    if (task->state != TASK_STATE_CREATED)
         task->state = TASK_STATE_RUNNING;
     if (task->is_priority)
         task_queue_push(&priority_ready_queue, task);
@@ -75,7 +74,7 @@ static inline void enqueue_ready(task_t *task)
 static inline void enqueue_sleep(task_t *task)
 {
     task->state = TASK_STATE_SLEEPING;
-    ordered_array_insert(&sleep_queue, task);
+    mini_heap_insert(&sleep_queue, task);
 }
 
 static inline void enqueue_blocked(task_t *task)
@@ -90,20 +89,7 @@ static inline void enqueue_zombie(task_t *task)
     task_queue_push(&zombie_queue, task);
 }
 
-static void wake_sleepers(uint32_t tick)
-{
-    while (ordered_array_size(&sleep_queue) > 0)
-    {
-        task_t *t = ordered_array_get(&sleep_queue, 0);
-        if (!t || t->sleep > tick)
-            break;
-
-        ordered_array_remove(&sleep_queue, 0);
-        enqueue_ready(t);
-    }
-}
-
-static task_t *get_next_ready(void)
+static inline task_t *get_next_ready(void)
 {
     task_t *t = task_queue_pop(&priority_ready_queue);
     if (!t)
@@ -111,6 +97,18 @@ static task_t *get_next_ready(void)
     return t;
 }
 
+static void wake_sleepers(uint32_t tick)
+{
+    while (sleep_queue.size > 0) 
+    {
+        task_t *t = mini_heap_peek(&sleep_queue);
+        if (!t || t->sleep > tick)
+            break;
+
+        mini_heap_pop(&sleep_queue);
+        enqueue_ready(t);
+    }
+}
 static int round_robin(uint32_t tick)
 {
     task_t *next;
@@ -122,7 +120,7 @@ static int round_robin(uint32_t tick)
         enqueue_ready(current_task);
         current_task = NULL;
     }
-    
+
     next = get_next_ready();
     if (!next)
     {
@@ -136,7 +134,7 @@ static int round_robin(uint32_t tick)
         if (next->mode != TASK_MODE_KTHREAD)
             kernel_task_state_segment_set_stack(0x10, next->kebp);
 
-        if (!current_task || current_task->physical_cr3 != next->physical_cr3)
+        if (current_task == NULL || current_task->physical_cr3 != next->physical_cr3)
             paging_manager_swap_system_page_directory(next->physical_cr3, true);
 
         current_task = next;
@@ -149,33 +147,33 @@ static int round_robin(uint32_t tick)
     {
         switch (next->state)
         {
-            case TASK_STATE_ZOMBIE:
-                enqueue_zombie(next);
-                break;
+        case TASK_STATE_ZOMBIE:
+            enqueue_zombie(next);
+            break;
 
-            case TASK_STATE_SLEEPING:
-                enqueue_sleep(next);
-                break;
+        case TASK_STATE_SLEEPING:
+            enqueue_sleep(next);
+            break;
 
-            case TASK_STATE_BLOCKED:
-                enqueue_blocked(next);
-                break;
+        case TASK_STATE_BLOCKED:
+            enqueue_blocked(next);
+            break;
 
-            case TASK_STATE_CREATED:
-                if (next->mode != TASK_MODE_KTHREAD)
-                    kernel_task_state_segment_set_stack(0x10, next->kebp);
+        case TASK_STATE_CREATED:
+            if (next->mode != TASK_MODE_KTHREAD)
+                kernel_task_state_segment_set_stack(0x10, next->kebp);
 
-                if (!current_task || current_task->physical_cr3 != next->physical_cr3)
-                    paging_manager_swap_system_page_directory(next->physical_cr3, true);
+            if (current_task == NULL || current_task->physical_cr3 != next->physical_cr3)
+                paging_manager_swap_system_page_directory(next->physical_cr3, true);
 
-                current_task = next;
-                system_current_task = next;
-                task_start(next);
-                break;
+            current_task = next;
+            system_current_task = next;
+            task_start(next);
+            break;
 
-            default:
-                enqueue_ready(next);
-                break;
+        default:
+            enqueue_ready(next);
+            break;
         }
 
         next = get_next_ready();
@@ -192,7 +190,7 @@ static int round_robin(uint32_t tick)
         if (next->mode != TASK_MODE_KTHREAD)
             kernel_task_state_segment_set_stack(0x10, next->kebp);
 
-        if (!current_task || current_task->physical_cr3 != next->physical_cr3)
+        if (current_task == NULL || current_task->physical_cr3 != next->physical_cr3)
             paging_manager_swap_system_page_directory(next->physical_cr3, true);
 
         current_task = next;
@@ -238,7 +236,7 @@ int scheduling_exit(void)
 extern void test(registers_t *d, uint32_t t);
 int scheduling_schedule(registers_t *__reg_ /*unused*/, uint32_t tick)
 {
-    if(__reg_ != NULL)
+    if (__reg_ != NULL)
         test(NULL, tick);
 
     if (current_task == NULL)
