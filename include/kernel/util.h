@@ -19,12 +19,9 @@ extern int system_interrupt_disable_counter;
     }
 
 #define INTERRUPT_SAFE_BLOCK(code_block) \
-    do                                   \
-    {                                    \
         DISABLE_INTERRUPTS();            \
         code_block                       \
-        ENABLE_INTERRUPTS();             \
-    } while (0)
+        ENABLE_INTERRUPTS();
 
 #define PANIC() \
     asm("cli"); \

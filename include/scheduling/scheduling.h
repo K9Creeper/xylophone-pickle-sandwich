@@ -14,7 +14,7 @@ extern int scheduling_exit(void);
 extern int scheduling_prioritize(task_t* task);
 extern int scheduling_add(task_t* task);
 extern int scheduling_block(task_t* task);
-extern int scheduling_sleep(int time);
+extern int scheduling_sleep(int ms);
 extern task_t* scheduling_consume(void);
 extern int scheduling_yield(void);
 

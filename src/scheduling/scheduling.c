@@ -47,30 +47,36 @@ void scheduling_init(void)
     is_initalized = true;
 }
 
-static inline void requeue_task(task_t *task) {
+static inline void requeue_task(task_t *task)
+{
     if (task->is_priority)
         task_queue_push(&priority, task);
     else
         task_queue_push(&queue, task);
 }
 
-static task_t *get_next_task(void) {
+static task_t *get_next_task(void)
+{
     task_t *t = task_queue_pop(&priority);
     if (!t)
         t = task_queue_pop(&queue);
     return t;
 }
 
-static int round_robin(uint32_t tick) {
+static int round_robin(uint32_t tick)
+{
     task_t *next;
 
-    if (current_task) {
+    if (current_task)
+    {
         requeue_task(current_task);
         current_task = NULL;
     }
 
-    while ((next = get_next_task()) != NULL) {
-        switch (next->state) {
+    while ((next = get_next_task()) != NULL)
+    {
+        switch (next->state)
+        {
         case TASK_STATE_RUNNING:
             goto found_runnable;
 
@@ -88,7 +94,8 @@ static int round_robin(uint32_t tick) {
             break;
 
         case TASK_STATE_SLEEPING:
-            if (next->sleep <= tick) {
+            if (next->sleep <= tick)
+            {
                 next->state = TASK_STATE_RUNNING;
                 goto found_runnable;
             }
@@ -96,7 +103,7 @@ static int round_robin(uint32_t tick) {
 
         case TASK_STATE_ZOMBIE:
 
-        // TODO: add a cleanup operation...
+            // TODO: add a cleanup operation...
 
         case TASK_STATE_BLOCKED:
         default:
@@ -111,7 +118,8 @@ static int round_robin(uint32_t tick) {
     return -1;
 
 found_runnable:
-    if (current_task != next) {
+    if (current_task != next)
+    {
         if (next->mode != TASK_MODE_KTHREAD)
             kernel_task_state_segment_set_stack(0x10, next->kebp);
 
@@ -149,18 +157,15 @@ int scheduling_schedule(registers_t *__reg_ /*unused*/, uint32_t tick)
         system_current_task = current_task;
     }
 
-    current_task->yields++;
+    {
+        INTERRUPT_SAFE_BLOCK({
+            _task_save_context(current_task);
 
-    if(__reg_ != NULL && tick % 1000 == 0)
-    printf("1 sec\n");
+            round_robin(tick);
 
-    INTERRUPT_SAFE_BLOCK({
-        _task_save_context(current_task);
-
-        round_robin(tick);
-
-        _task_restore_context(current_task);
-    });
+            _task_restore_context(current_task);
+        });
+    }
 
     return 0;
 }
@@ -201,14 +206,19 @@ int scheduling_block(task_t *task)
     return 0;
 }
 
-int scheduling_sleep(int time)
+int scheduling_sleep(int ms)
 {
-    uint32_t tick = pit_get_tick();
+    uint32_t tick_now = pit_get_tick();
+    uint32_t hz = pit_get_hz();
 
-    current_task->sleep = tick + time;
+    // Convert ms to PIT ticks
+    uint32_t ticks_to_sleep = (ms * hz) / 1000;
+    if (ticks_to_sleep == 0) ticks_to_sleep = 1; // ensure at least 1 tick
+
+    current_task->sleep = tick_now + ticks_to_sleep;
     current_task->state = TASK_STATE_SLEEPING;
 
-    scheduling_schedule(NULL, tick);
+    scheduling_schedule(NULL, tick_now);
 
     return 0;
 }
