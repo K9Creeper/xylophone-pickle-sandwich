@@ -66,15 +66,13 @@ void kernel_main(uint32_t addr, uint32_t magic)
     setup_misc();
     setup_gdt();
     setup_idt();
-    //setup_early_heap();
-    //setup_paging();
-    //setup_heap();
+    setup_early_heap();
+    setup_paging();
+    setup_heap();
     setup_drivers();
-    //setup_fault_handlers();
+    setup_fault_handlers();
 
     ENABLE_INTERRUPTS();
-
-    /*
 
     enable_keyboard_input();
 
@@ -107,7 +105,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
     setup_scheduling();
     finish_scheduling();
     ENABLE_INTERRUPTS();
-*/
+
 halt:
     for (;;)
     {
@@ -121,7 +119,7 @@ halt:
 
 void setup_misc(void)
 {
-    //kernel_misc_drivers_serial_com1_init();
+    kernel_misc_drivers_serial_com1_init();
     vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_LIGHT_BLUE, VGA_TERMINAL_COLOR_DARK_GREY);
     vga_terminal_show_cursor(false);
 }
@@ -135,12 +133,12 @@ void setup_misc(void)
 static void setup_gdt(void)
 {
     kernel_global_descriptor_table_init();
-    //bios32_init();
+    bios32_init();
     kernel_global_descriptor_table_install();
 
-    //uint32_t esp;
-    //get_esp(esp);
-    //kernel_task_state_segment_int(5, 0x10, esp);
+    uint32_t esp;
+    get_esp(esp);
+    kernel_task_state_segment_int(5, 0x10, esp);
 }
 static void setup_idt(void)
 {
@@ -212,19 +210,19 @@ void setup_fault_handlers(void)
 #include "drivers/pit/pit.h"
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/syscalls/syscalls.h"
-void test(registers_t *d, uint32_t t)
+static void test(registers_t *d, uint32_t t)
 {
-    if(t % 1000 == 0)
+    if (t % pit_get_hz() == 0)
         vga_terminal_write_string("Tick %d\n", t);
 }
 
 void setup_drivers(void)
 {
-    //syscalls_init();
-    //keyboard_init();
-    pit_init(1000);
+    syscalls_init();
+    keyboard_init();
+    pit_init(500);
 
-    pit_add_handle((pit_handle_t)test);
+    // pit_add_handle((pit_handle_t)test);
 }
 
 // ------------------------------------------------------------
@@ -239,7 +237,6 @@ void kthread_idle(void)
     while (true)
     {
         scheduling_yield();
-        __asm__ volatile("hlt");
     }
 }
 
@@ -268,10 +265,10 @@ void finish_scheduling(void)
 {
     if (!kernel_context->video_state.is_text_mode)
         kthread_start("graphics", 0, NULL);
-
+    
     kthread_start("idlethread1", 0, NULL);
     kthread_start("aids", 0, NULL);
-    
+
     pit_add_handle((pit_handle_t)scheduling_schedule);
 }
 

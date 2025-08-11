@@ -18,4 +18,6 @@ extern void pit_remove_handle(void);
 
 extern uint32_t pit_get_tick(void);
 
+extern uint32_t pit_get_hz(void);
+
 #endif
