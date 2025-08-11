@@ -9,7 +9,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef TYPE_T
+#define TYPE_T
+
 typedef void* type_t;
+
+#endif
 
 typedef bool (*ordered_array_is_less_than_handle_t)(const type_t, const type_t);
 
