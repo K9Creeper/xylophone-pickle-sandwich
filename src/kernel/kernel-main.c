@@ -220,7 +220,7 @@ void setup_drivers(void)
 {
     syscalls_init();
     keyboard_init();
-    pit_init(500);
+    pit_init(1000);
 
     // pit_add_handle((pit_handle_t)test);
 }

@@ -25,12 +25,16 @@ int task_cleaner_add(task_t* task_to_clean){
     return 0;
 }
 
+extern void scheduling_maintenance(void);
+
 void kthread_task_cleaner(void){
     if(is_initialized) exit();
     task_queue_init(&to_clean_queue);
     is_initialized = true;
 
     while(is_initialized){
+        scheduling_maintenance();
+        
         task_t* task = task_queue_peek(&to_clean_queue);
         if(task == NULL){ yield(); continue; }
 

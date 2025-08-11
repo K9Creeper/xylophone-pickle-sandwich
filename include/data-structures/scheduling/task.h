@@ -63,7 +63,7 @@ typedef struct task_s
     volatile task_state_t state;
     task_mode_t mode;
     int16_t pid;
-    uint16_t sleep;
+    uint32_t sleep;
     uint32_t stackptr;
     paging_manager_t *paging_manger;
     heap_manager_t *heap_manger;

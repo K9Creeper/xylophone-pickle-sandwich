@@ -127,3 +127,7 @@ task_t *task_queue_peek(task_queue_t *queue)
 
     return front;
 }
+
+bool task_queue_empty(task_queue_t* queue){
+    return queue->_list == NULL;
+}

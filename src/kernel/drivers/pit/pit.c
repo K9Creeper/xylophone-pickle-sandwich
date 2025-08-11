@@ -17,7 +17,7 @@
 static bool is_initialized;
 
 static uint16_t hz_frequency;
-static uint32_t ticks;
+static uint32_t ticks = 0;
 
 static void *s_handle = NULL;
 
@@ -30,10 +30,7 @@ static void timer_handle(registers_t *regs)
 
     if (s_handle != NULL)
     {
-        if ((((pit_handle_t)(s_handle))(regs, ticks)))
-        {
-            // Bad..
-        }
+        ((pit_handle_t)(s_handle))(regs, ticks);
     }
 }
 
@@ -41,7 +38,7 @@ void pit_init(uint16_t hz)
 {
     if (is_initialized)
         return;
-        
+
     pit_set_frequency(hz);
     ticks = 0;
     kernel_interrupt_request_set_handle(0, timer_handle);
@@ -56,7 +53,7 @@ void pit_set_frequency(uint16_t hz)
     uint8_t h = (uint8_t)((divisor >> 8) & 0xFF);
 
     INTERRUPT_SAFE_BLOCK({
-        outportb(0x43, 0x34);
+        outportb(0x43, 0x36);
         outportb(0x40, l);
         outportb(0x40, h);
     });
@@ -79,6 +76,7 @@ uint32_t pit_get_tick(void)
     return ticks;
 }
 
-uint32_t pit_get_hz(void){
+uint32_t pit_get_hz(void)
+{
     return hz_frequency;
 }
