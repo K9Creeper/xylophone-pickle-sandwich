@@ -34,11 +34,12 @@ void framebuffer_clear(framebuffer_t* fb){
 
 uint32_t* framebuffer_get_pixel(framebuffer_t *fb, int x, int y)
 {
-    if (fb == NULL || fb->lfb == NULL)
+    if (!fb || !fb->lfb)
         return NULL;
 
-   if (y > fb->height - 1 || x > fb->width - 1 || x < 0 || y < 0)
+    if (x < 0 || y < 0 || x >= fb->width || y >= fb->height)
         return NULL;
 
-    return (uint32_t*)((uint32_t)(fb->lfb) + ((y)*fb->pitch + ((x) * (fb->bpp / 8))));
+    const uint32_t bytes_per_pixel = fb->bpp / 8;
+    return (uint32_t*)((uint8_t*)fb->lfb + y * fb->pitch + x * bytes_per_pixel);
 }

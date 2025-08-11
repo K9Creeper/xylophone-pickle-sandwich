@@ -4,7 +4,6 @@
 
 #include "vesa.h"
 
-#include <stdio.h>
 #include <memory.h>
 
 #include "../../bios32/bios32.h"
@@ -91,7 +90,6 @@ int vesa_init(void)
     load_vbe();
     if (vbe_info.signature[0] != 'V' || vbe_info.signature[1] != 'E' || vbe_info.signature[2] != 'S' || vbe_info.signature[3] != 'A')
     {
-        printf("VESA not supported\n");
         return 1;
     }
 

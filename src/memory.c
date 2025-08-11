@@ -65,31 +65,39 @@ unsigned char *memcpy(unsigned char *dest,
 
 void *fast_memcpy(void *dest, const void *src, uint32_t n)
 {
-  uint8_t *d = (uint8_t *)dest;
-  const uint8_t *s = (const uint8_t *)src;
+    uint8_t *d = (uint8_t *)dest;
+    const uint8_t *s = (const uint8_t *)src;
 
-  while (n > 0 && ((uintptr_t)d & 3))
-  {
-    *d++ = *s++;
-    n--;
-  }
+    while (n > 0 && ((uintptr_t)d & 3)) {
+        *d++ = *s++;
+        n--;
+    }
 
-  uint32_t *d32 = (uint32_t *)d;
-  const uint32_t *s32 = (const uint32_t *)s;
-  while (n >= 4)
-  {
-    *d32++ = *s32++;
-    n -= 4;
-  }
+    uint32_t *d32 = (uint32_t *)d;
+    const uint32_t *s32 = (const uint32_t *)s;
 
-  d = (uint8_t *)d32;
-  s = (const uint8_t *)s32;
-  while (n--)
-  {
-    *d++ = *s++;
-  }
+    while (n >= 16) {
+        d32[0] = s32[0];
+        d32[1] = s32[1];
+        d32[2] = s32[2];
+        d32[3] = s32[3];
+        d32 += 4;
+        s32 += 4;
+        n -= 16;
+    }
 
-  return dest;
+    while (n >= 4) {
+        *d32++ = *s32++;
+        n -= 4;
+    }
+
+    d = (uint8_t *)d32;
+    s = (const uint8_t *)s32;
+    while (n--) {
+        *d++ = *s++;
+    }
+
+    return dest;
 }
 
 unsigned char *memset(unsigned char *dest, unsigned char val, int count)
