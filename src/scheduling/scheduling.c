@@ -93,6 +93,12 @@ static int round_robin(uint32_t tick)
             task_start(next);
             // task_start should not return; if it does, continue loop
             break;
+        case TASK_STATE_ZOMBIE:
+            if (task_cleaner_add(next) == 0)
+            {
+                continue;
+            }
+            // if can't cleanup then fallthrough to requeue
 
         case TASK_STATE_SLEEPING:
             if (next->sleep <= tick)
@@ -101,13 +107,6 @@ static int round_robin(uint32_t tick)
                 goto found_runnable;
             }
             // if not enough time has passed fallthrough to requeue
-
-        case TASK_STATE_ZOMBIE:
-            if(task_cleaner_add(next) == 0){
-                continue;
-            }
-            // if can't cleanup then fallthrough to requeue
-            
         case TASK_STATE_BLOCKED:
         default:
             requeue_task(next);
