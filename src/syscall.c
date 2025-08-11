@@ -4,13 +4,20 @@
 
 #include <syscall.h>
 
+#include <stdio.h>
+
 static int _syscall(syscall_t i, int arg1, int arg2, int arg3)
 {
     int ret;
-
-    __asm__ volatile ("int $0x80"
-                  : "=a" (ret)
-                  : "%0" (i), "b" (arg1), "c" (arg2), "d" (arg3));
+    __asm__ volatile (
+        "int $0x80"
+        : "=a" (ret)                  /* output: ret in eax */
+        : "a" (i),                    /* input: syscall number in eax */
+          "b" (arg1),                 /* input: arg1 in ebx */
+          "c" (arg2),                 /* input: arg2 in ecx */
+          "d" (arg3)                  /* input: arg3 in edx */
+        : "memory"                    /* clobbers */
+    );
     return ret;
 }
 
@@ -24,4 +31,12 @@ void exit(void){
 
 void sleep(int ms){
     _syscall(SYSCALL_SLEEP, ms, 0, 0);
+}
+
+void* malloc(int size){
+    return (void*)_syscall(SYSCALL_MALLOC, size, 0, 0);
+}
+
+void free(void* address){
+    _syscall(SYSCALL_FREE, (uint32_t)address, 0, 0);
 }

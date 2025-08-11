@@ -19,8 +19,11 @@ extern int system_interrupt_disable_counter;
     }
 
 #define INTERRUPT_SAFE_BLOCK(code_block) \
-        DISABLE_INTERRUPTS();            \
+    DISABLE_INTERRUPTS();                \
+    do                                   \
+    {                                    \
         code_block                       \
+    } while (0);                          \
         ENABLE_INTERRUPTS();
 
 #define PANIC() \

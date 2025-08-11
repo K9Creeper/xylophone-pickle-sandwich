@@ -7,8 +7,13 @@
 
 #include <data-structures/syscall.h>
 
+#include <stdint.h>
+
 void yield(void);
 void exit(void);
 void sleep(int ms);
+
+void* malloc(int size);
+void free(void* address);
 
 #endif

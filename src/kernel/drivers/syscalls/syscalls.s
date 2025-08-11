@@ -1,9 +1,10 @@
 .extern syscalls_handlers /* void** */
 .global _handle_syscalls_interrupt
 _handle_syscalls_interrupt:
-    movl 4(%esp), %edx        /* registers_t */
+    movl 4(%esp), %edx        /* registers_t* */
+    movl %edx, %esi
 
-    movl 32(%edx), %ebx       /* index (eax) */
+    movl 32(%edx), %ebx       /* eax syscall number */
 
     pushl 4(%edx)             /* edi */
     pushl 8(%edx)             /* esi */
@@ -14,12 +15,8 @@ _handle_syscalls_interrupt:
     movl syscalls_handlers(, %ebx, 4), %ecx
     call *%ecx
 
-    popl %ebx
-    popl %ebx
-    popl %ebx
-    popl %ebx
-    popl %ebx
+    add $20, %esp             /* clean up stack, 5 * 4 bytes */
 
-    movl %eax, 32(%edx)       /* return value -> eax (registers_t) */
+    movl %eax, 32(%esi)       /* store return value */
 
     ret

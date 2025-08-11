@@ -239,6 +239,10 @@ void kthread_aids(void)
     scheduling_exit();
 }
 
+// scheduling.c
+extern void* syscall_malloc(int size);
+extern void syscall_free(void* address);
+
 void setup_scheduling(void)
 {
     scheduling_init();
@@ -246,6 +250,9 @@ void setup_scheduling(void)
     syscalls_register(SYSCALL_EXIT, (void *)scheduling_exit);
     syscalls_register(SYSCALL_SLEEP, (void *)scheduling_sleep);
     syscalls_register(SYSCALL_YIELD, (void *)scheduling_yield);
+    
+    syscalls_register(SYSCALL_MALLOC, (void *)syscall_malloc);
+    syscalls_register(SYSCALL_FREE, (void *)syscall_free);
 
     kthread_register((kthread_entry_t)kthread_idle, "idle-thread");
     kthread_register((kthread_entry_t)kthread_task_cleaner, "task-cleaner");

@@ -56,8 +56,8 @@ void scheduling_init(void)
     task_queue_init(&blocked_queue);
     task_queue_init(&zombie_queue);
 
-    mini_heap_init(&sleep_queue, (type_t*)sleep_array_storage, MAX_SLEEP_TASKS, sleep_queue_is_less_than);
-    
+    mini_heap_init(&sleep_queue, (type_t *)sleep_array_storage, MAX_SLEEP_TASKS, sleep_queue_is_less_than);
+
     is_initalized = true;
 }
 
@@ -99,7 +99,7 @@ static inline task_t *get_next_ready(void)
 
 static void wake_sleepers(uint32_t tick)
 {
-    while (sleep_queue.size > 0) 
+    while (sleep_queue.size > 0)
     {
         task_t *t = mini_heap_peek(&sleep_queue);
         if (!t || t->sleep > tick)
@@ -326,4 +326,26 @@ task_t *scheduling_consume(void)
 int scheduling_yield(void)
 {
     return scheduling_schedule(NULL, pit_get_tick());
+}
+
+// Syscall for current thread/task
+void *syscall_malloc(int size)
+{
+    void *ret = NULL;
+    INTERRUPT_SAFE_BLOCK({
+        if (current_task == NULL)
+            break;
+
+        ret = heap_manager_malloc(current_task->heap_manger, size, false, NULL);
+    });
+    return ret;
+}
+
+void syscall_free(void *address)
+{
+    INTERRUPT_SAFE_BLOCK({
+        if (current_task == NULL)
+            break;
+        heap_manager_free(current_task->heap_manger, (uint32_t)address);
+    });
 }
