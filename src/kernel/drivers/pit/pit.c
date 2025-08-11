@@ -17,7 +17,7 @@
 static bool is_initialized;
 
 static uint16_t hz_frequency;
-static uint32_t ticks = 0;
+static volatile uint32_t ticks = 0;
 
 static void *s_handle = NULL;
 

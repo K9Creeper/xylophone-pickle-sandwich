@@ -9,8 +9,8 @@
 
 extern void keyboard_init(void);
 
-extern int keyboard_add_input_handle(keyboard_input_handle_t handle);
-extern void keyboard_remove_input_handle(int index);
+extern void keyboard_add_input_handle(keyboard_input_handle_t handle);
+extern void keyboard_remove_input_handle(void);
 
 extern keyboard_key_t keyboard_get_key(keyboard_keycode_t keycode);
 

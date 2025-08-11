@@ -9,8 +9,8 @@
 
 extern void mouse_init(void);
 
-extern int mouse_add_input_handle(mouse_input_handle_t handle);
-extern void mouse_remove_input_handle(int index);
+extern void mouse_add_input_handle(mouse_input_handle_t handle);
+extern void mouse_remove_input_handle(void);
 
 extern mouse_info_t mouse_get_info(void);
 

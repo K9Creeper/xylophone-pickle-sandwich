@@ -235,9 +235,12 @@ int scheduling_exit(void)
 
     return 0;
 }
-
+extern void test(registers_t *d, uint32_t t);
 int scheduling_schedule(registers_t *__reg_ /*unused*/, uint32_t tick)
 {
+    if(__reg_ != NULL)
+        test(NULL, tick);
+
     if (current_task == NULL)
     {
         current_task = task_queue_pop(&priority_ready_queue);

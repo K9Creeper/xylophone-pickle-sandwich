@@ -245,5 +245,5 @@ isr_common_stub:
     movw %ax, %gs
     popa
     addl $8, %esp
-    sti
+
     iret

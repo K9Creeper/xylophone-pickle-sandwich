@@ -34,13 +34,17 @@ void kthread_task_cleaner(void){
 
     while(is_initialized){
         scheduling_maintenance();
-        
+
         task_t* task = task_queue_peek(&to_clean_queue);
-        if(task == NULL){ yield(); continue; }
+        if(task == NULL){
+            __asm__ volatile("hlt");
+            continue;
+        }
 
         task = task_queue_pop(&to_clean_queue);
         if(task != NULL){
             task_cleanup(task->pid);
+            yield();
         }
     }
 }

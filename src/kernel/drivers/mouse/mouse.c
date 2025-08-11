@@ -12,13 +12,11 @@
 #include <data-structures/kernel/kernel-interrupts.h>
 #include "../../interrupts/interrupt-request.h"
 
-#define NUM_OF_MOUSE_HANDLES 16
-
 // kernel-main.c
 extern kernel_context_t *kernel_context;
 
 static bool is_initialized;
-static mouse_input_handle_t input_handles[NUM_OF_MOUSE_HANDLES];
+static mouse_input_handle_t input_handle;
 static mouse_info_t mouse_info;
 static uint8_t cycle = 0;
 static char mouse_byte[3];
@@ -63,8 +61,7 @@ static void mouse_handler(registers_t*);
 
 void mouse_init(void)
 {
-    for (uint8_t i = 0; i < NUM_OF_MOUSE_HANDLES; i++)
-        input_handles[i] = NULL;
+    input_handle = NULL;
 
     is_initialized = true;
 
@@ -91,23 +88,14 @@ void mouse_init(void)
     kernel_interrupt_request_set_handle(12, (kernel_interrupt_request_handle_t)mouse_handler);
 }
 
-int mouse_add_input_handle(mouse_input_handle_t handle)
+void mouse_add_input_handle(mouse_input_handle_t handle)
 {
-    for (uint8_t i = 0; i < NUM_OF_MOUSE_HANDLES; i++)
-        if (!input_handles[i])
-        {
-            input_handles[i] = handle;
-            return i;
-        }
-
-    return -1;
+    input_handle = handle;
 }
 
-void mouse_remove_input_handle(int index)
+void mouse_remove_input_handle(void)
 {
-    if(index < 0 || index > NUM_OF_MOUSE_HANDLES) return;
-
-    input_handles[index] = NULL;
+    input_handle = NULL;
 }
 
 mouse_info_t mouse_get_info(void)
@@ -182,9 +170,8 @@ static void mouse_handler(registers_t* __regs__ /* unused */)
         }
 
         mouse_info = temp;
-        for (uint8_t i = 0; i < 16; i++)
-            if (input_handles[i] != NULL)
-                ((mouse_input_handle_t)(input_handles[i]))(&mouse_info);
+        if (input_handle != NULL)
+            ((mouse_input_handle_t)(input_handle))(&mouse_info);
         
         memcpy(temp.prev_state, temp.curr_state, 3);
         memset(temp.curr_state, 0x00, 3);

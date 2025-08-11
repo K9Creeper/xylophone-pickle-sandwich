@@ -6,92 +6,62 @@
 
 #include <memory.h>
 
-void ordered_array_init(ordered_array_t* ordered_array, uint32_t max_size, ordered_array_is_less_than_handle_t handle){
-    if(!ordered_array)
-        return;
-
-    ordered_array->array = NULL;
-
-    ordered_array->size = 0;
-    ordered_array->max_size = max_size;
-
-    ordered_array->is_less_than_handle = handle;
+void ordered_array_init(ordered_array_t* oa, uint32_t max_size, ordered_array_is_less_than_handle_t cmp) {
+    if (!oa) return;
+    oa->array = NULL;
+    oa->size = 0;
+    oa->max_size = max_size;
+    oa->is_less_than_handle = cmp;
 }
 
-void ordered_array_place(ordered_array_t* ordered_array, void* address){
-    ordered_array->array = (type_t*)(address);
+void ordered_array_place(ordered_array_t* oa, void* address) {
+    if (!oa) return;
+    oa->array = (type_t*) address;
 
-	memset((uint8_t*)address, 0, ordered_array->max_size * sizeof(type_t));
-	
-	ordered_array->size = 0;
+    uint8_t* ptr = (uint8_t*) address;
+    for (uint32_t i = 0; i < oa->max_size * sizeof(type_t); i++) {
+        ptr[i] = 0;
+    }
+
+    oa->size = 0;
 }
 
-bool ordered_array_insert(ordered_array_t* ordered_array, type_t item){
-    if(!ordered_array || !ordered_array->is_less_than_handle)
+bool ordered_array_insert(ordered_array_t* oa, type_t item) {
+    if (!oa || !oa->is_less_than_handle || oa->size >= oa->max_size)
         return false;
-    
-    uint32_t idx = 0;
 
-    static type_t tmp1;
-    static type_t tmp2;
-
-    while(idx < ordered_array->size && ordered_array->is_less_than_handle(ordered_array->array[idx], item))
-    {
-        ++idx;
+    uint32_t left = 0, right = oa->size;
+    while (left < right) {
+        uint32_t mid = left + (right - left) / 2;
+        if (oa->is_less_than_handle(oa->array[mid], item))
+            left = mid + 1;
+        else
+            right = mid;
     }
 
-    if(idx + 1 > ordered_array->max_size)
-    {
-        return false;
+    for (uint32_t i = oa->size; i > left; i--) {
+        oa->array[i] = oa->array[i - 1];
     }
 
-    if (idx == ordered_array->size)
-    {
-        ordered_array->array[ordered_array->size] = item;
-
-        ordered_array->size++;
-    }
-    else
-    {
-        tmp1 = ordered_array->array[idx];
-
-        ordered_array->array[idx] = item;
-
-        while (idx < ordered_array->size)
-        {
-            idx++;
-
-            tmp2 = ordered_array->array[idx];
-
-            ordered_array->array[idx] = tmp1;
-
-            tmp1 = tmp2;
-        }
-
-        ordered_array->size++;
-    }
-
+    oa->array[left] = item;
+    oa->size++;
     return true;
 }
 
-void ordered_array_remove(ordered_array_t* ordered_array, uint32_t index){
-    while (index < ordered_array->size - 1) {
-        ordered_array->array[index] = ordered_array->array[index + 1];
-        index++;
+void ordered_array_remove(ordered_array_t* oa, uint32_t index) {
+    if (!oa || index >= oa->size) return;
+
+    for (uint32_t i = index; i < oa->size - 1; i++) {
+        oa->array[i] = oa->array[i + 1];
     }
-    ordered_array->size--;
+    oa->size--;
 }
 
-uint32_t ordered_array_size(ordered_array_t* ordered_array){
-    if(!ordered_array)
-        return (uint32_t)-1;
-    return ordered_array->size;
+uint32_t ordered_array_size(ordered_array_t* oa) {
+    return oa ? oa->size : (uint32_t)-1;
 }
 
-type_t ordered_array_get(ordered_array_t* ordered_array, uint32_t index){
-    if (index >= ordered_array->max_size) {
-        return NULL;
-    }
-    
-	return ordered_array->array[index];
+type_t ordered_array_get(ordered_array_t* oa, uint32_t index) {
+    if (!oa || index >= oa->size) return NULL;
+    return oa->array[index];
 }

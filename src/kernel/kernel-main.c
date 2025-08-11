@@ -89,6 +89,9 @@ void kernel_main(uint32_t addr, uint32_t magic)
     finish_scheduling();
     ENABLE_INTERRUPTS();
 
+    // This loop slows down the PIT?
+    // for (;;);
+
 halt:
     for (;;)
     {
@@ -194,7 +197,7 @@ void setup_fault_handlers(void)
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/mouse/mouse.h"
 #include "drivers/syscalls/syscalls.h"
-static void test(registers_t *d, uint32_t t)
+ void test(registers_t *d, uint32_t t)
 {
     if (t % pit_get_hz() == 0)
         vga_terminal_write_string("Tick %d\n", t);
@@ -205,7 +208,7 @@ void setup_drivers(void)
     syscalls_init();
     keyboard_init();
     mouse_init();
-    pit_init(100);
+    pit_init(500);
 
     // pit_add_handle((pit_handle_t)test);
 }
@@ -229,14 +232,13 @@ void kthread_idle(void)
 
 void kthread_aids(void)
 {
-    for (int i = 0; i < 10; i++)
-        printf("Line %d\n", i);
+    for (int i = 0; i < 10; i++);
+
     printf("Done!\n");
 
     scheduling_exit();
 }
 
-static int vga_terminal_keyboard_input_handle_index;
 void setup_scheduling(void)
 {
     scheduling_init();
@@ -279,7 +281,7 @@ static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, cons
 void enable_keyboard_input(void)
 {
     vga_terminal_show_cursor(true);
-    vga_terminal_keyboard_input_handle_index = keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
+    keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
 }
 
 // ------------------------------------------------------------
@@ -340,7 +342,7 @@ int setup_vesa(void)
         break;
     }
 
-    keyboard_remove_input_handle(vga_terminal_keyboard_input_handle_index);
+    keyboard_remove_input_handle();
     vga_terminal_destroy();
 
     return 0;

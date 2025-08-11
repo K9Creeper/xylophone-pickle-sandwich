@@ -138,8 +138,6 @@ irq_common_stub:
 
     popa                     
 
-    addl $8, %esp            
-
-    sti                     
+    addl $8, %esp
 
     iret                     
