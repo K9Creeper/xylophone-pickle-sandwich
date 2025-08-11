@@ -120,7 +120,7 @@ halt:
 void setup_misc(void)
 {
     kernel_misc_drivers_serial_com1_init();
-    vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_LIGHT_BLUE, VGA_TERMINAL_COLOR_DARK_GREY);
+    vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_MAGENTA, VGA_TERMINAL_COLOR_LIGHT_GREY);
     vga_terminal_show_cursor(false);
 }
 
@@ -230,7 +230,9 @@ void setup_drivers(void)
 #include <scheduling/scheduling.h>
 #include "kthread/kthread.h"
 
+// kthread/thread/**
 extern void kthread_graphics(void);
+extern void kthread_task_cleaner(void);
 
 void kthread_idle(void)
 {
@@ -242,10 +244,11 @@ void kthread_idle(void)
 
 void kthread_aids(void)
 {
-    while (true)
-    {
-        __asm__ volatile("hlt");
-    }
+    for (int i = 0; i < 10; i++)
+        printf("Line %d\n", i);
+    printf("Done!\n");
+
+    scheduling_exit();
 }
 
 static int vga_terminal_keyboard_input_handle_index;
@@ -257,17 +260,20 @@ void setup_scheduling(void)
     syscalls_register(SYSCALL_SLEEP, (void *)scheduling_sleep);
     syscalls_register(SYSCALL_YIELD, (void *)scheduling_yield);
 
-    kthread_register((kthread_entry_t)kthread_graphics, "graphics");
-    kthread_register((kthread_entry_t)kthread_idle, "idlethread1");
-    kthread_register((kthread_entry_t)kthread_aids, "aids");
+    kthread_register((kthread_entry_t)kthread_idle, "idle-thread");
+    kthread_register((kthread_entry_t)kthread_task_cleaner, "task-cleaner");
+    kthread_register((kthread_entry_t)kthread_aids, "kthread_aids");
+
+    kthread_register((kthread_entry_t)kthread_graphics, "vesa-graphics");
 }
 void finish_scheduling(void)
 {
+    kthread_start("idle-thread", 0, NULL);
+    kthread_start("task-cleaner", 0, NULL);
+    kthread_start("kthread_aids", 0, NULL);
+
     if (!kernel_context->video_state.is_text_mode)
-        kthread_start("graphics", 0, NULL);
-    
-    kthread_start("idlethread1", 0, NULL);
-    kthread_start("aids", 0, NULL);
+        kthread_start("vesa-graphics", 0, NULL);
 
     pit_add_handle((pit_handle_t)scheduling_schedule);
 }
@@ -297,6 +303,8 @@ void enable_keyboard_input(void)
 
 int setup_vesa(void)
 {
+    const int min_width = 640;
+    const int min_height = 400;
     if (vesa_init())
         return 1;
 
@@ -308,6 +316,9 @@ int setup_vesa(void)
     for (int i = 0; i < VESA_MODE_SIZE; i++)
     {
         if (vesa_modes[i].number == 0 || vesa_modes[i].info.bpp != 32)
+            continue;
+
+        if (vesa_modes[i].info.width < min_width || vesa_modes[i].info.height < min_height)
             continue;
 
         vga_terminal_write_string("Mode: %d %dx%d\n", vesa_modes[i].number, vesa_modes[i].info.width, vesa_modes[i].info.height);
@@ -325,7 +336,20 @@ int setup_vesa(void)
 
         int mode = atoi(buffer);
 
-        if (vesa_set_mode(mode))
+        bool invalid_pick = false;
+        for (int i = 0; i < VESA_MODE_SIZE; i++)
+        {
+            if (vesa_modes[i].number == mode)
+            {
+                if (vesa_modes[i].info.width < min_width || vesa_modes[i].info.height < min_height)
+                {
+                    invalid_pick = true;
+                    break;
+                }
+            }
+        }
+
+        if (invalid_pick || vesa_set_mode(mode))
             continue;
 
         break;

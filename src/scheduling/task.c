@@ -176,3 +176,33 @@ void _Noreturn task_start(task_t *task)
 
     PANIC();
 }
+
+int task_cleanup(int pid){
+    if(pid < 0 || pid > MAX_NUM_OF_TASKS)
+        return -1;
+    
+    task_t* task = &task_table[pid];
+
+    for (int i = 0; i < MAX_NUM_OF_TASKS; i++){
+		if(task_table[i].parent == task && task_table[i].mode == TASK_MODE_THREAD){
+			task_table[i].state = TASK_STATE_ZOMBIE;
+		}
+	}
+
+    // TODO: Cleanup virtual memory, when implemented..
+
+    INTERRUPT_SAFE_BLOCK({
+        
+    kernel_free((void*)task->stackptr);
+    task_count--;
+
+    memset((uint8_t*)task, 0, sizeof(task_t));
+    task->state = TASK_STATE_STOPPED;
+	task->pid = -1;
+	task->next = NULL;
+    task->is_priority = false;
+
+    });
+    
+    return 0;
+}

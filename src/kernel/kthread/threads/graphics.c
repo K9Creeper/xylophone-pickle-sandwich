@@ -66,61 +66,19 @@ static uint32_t hsv_to_rgb(float h, float s, float v)
     return (R << 16) | (G << 8) | B;
 }
 
-static void graphics_paint_rect(int x, int y, int width, int height, uint32_t color, uint8_t alpha) {
-    for (int py = 0; py < height; py++) {
-        for (int px = 0; px < width; px++) {
-            int draw_x = x + px;
-            int draw_y = y + py;
-            if (draw_x >= 0 && draw_x < kernel_context->video_state.width &&
-                draw_y >= 0 && draw_y < kernel_context->video_state.height) {
-                graphics_paint(draw_x, draw_y, color, alpha);
-            }
-        }
-    }
-}
-
-
 void kthread_graphics(void)
 {
     graphics_init(kernel_context->video_state.lfb, kernel_context->video_state.width, kernel_context->video_state.height, kernel_context->video_state.pitch, kernel_context->video_state.bpp);
     printf("Init Graphics 0x%X\n", kernel_context->video_state.lfb);
 
-    int size = 10;
-    
-    int x = 0;
-    int y = kernel_context->video_state.height / 2;
-    int dx = 1;
-    int dy = 1;
-
-    float hue = 0.0f;
-
     printf("Rendering...\n");
     while (true)
     {
-        // NOTE: ALREADY SETTING TO BLACK BACKGROUND
-        // graphics_fill_screen(0xFFFFFF);
+        graphics_fill_screen(0xf0c472);
 
-        x += dx;
-        y += dy;
+        
 
-        // Bounce horizontally with bounds accounting for square size
-        if (x <= 0 || x >= kernel_context->video_state.width - size) {
-            dx = -dx;
-        }
-
-        // Bounce vertically
-        if (y <= 0 || y >= kernel_context->video_state.height - size) {
-            dy = -dy;
-        }
-
-        hue += 0.005f;
-        if (hue > 1.0f) hue -= 1.0f;
-
-        uint32_t color = hsv_to_rgb(hue, 1.0f, 1.0f);
-
-        graphics_paint_rect(x, y, size, size, color, 255);
-
-        graphics_swap_buffers(true);
+        graphics_swap_buffers(false);
 
         sleep(16);
     }

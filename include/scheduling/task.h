@@ -14,4 +14,6 @@ extern void task_start(task_t* task);
 extern int task_create_kthread(task_entry_routine_t entry, char* name, int argc, char** argv);
 extern int task_create_thread(task_t* parent, task_entry_routine_t entry, void* arg, bool is_kernel);
 
+extern int task_cleanup(int pid);
+
 #endif

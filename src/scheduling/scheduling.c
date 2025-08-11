@@ -6,6 +6,7 @@
 #include <data-structures/scheduling/task.h>
 #include <scheduling/task.h>
 #include <scheduling/task-queue.h>
+#include <scheduling/task-cleaner.h>
 
 #include <kernel/util.h>
 #include "../kernel/drivers/pit/pit.h"
@@ -99,12 +100,14 @@ static int round_robin(uint32_t tick)
                 next->state = TASK_STATE_RUNNING;
                 goto found_runnable;
             }
-            // fallthrough to requeue
+            // if not enough time has passed fallthrough to requeue
 
         case TASK_STATE_ZOMBIE:
-
-            // TODO: add a cleanup operation...
-
+            if(task_cleaner_add(next) == 0){
+                continue;
+            }
+            // if can't cleanup then fallthrough to requeue
+            
         case TASK_STATE_BLOCKED:
         default:
             requeue_task(next);
@@ -175,6 +178,7 @@ int scheduling_prioritize(task_t *task)
     if (task == NULL)
         return -1;
 
+    task->is_priority = true;
     task_queue_push(&priority, task);
 
     return 0;
@@ -185,6 +189,7 @@ int scheduling_add(task_t *task)
     if (task == NULL)
         return -1;
 
+    task->is_priority = false;
     task_queue_push(&queue, task);
 
     return 0;
@@ -213,7 +218,8 @@ int scheduling_sleep(int ms)
 
     // Convert ms to PIT ticks
     uint32_t ticks_to_sleep = (ms * hz) / 1000;
-    if (ticks_to_sleep == 0) ticks_to_sleep = 1; // ensure at least 1 tick
+    if (ticks_to_sleep == 0)
+        ticks_to_sleep = 1; // ensure at least 1 tick
 
     current_task->sleep = tick_now + ticks_to_sleep;
     current_task->state = TASK_STATE_SLEEPING;
