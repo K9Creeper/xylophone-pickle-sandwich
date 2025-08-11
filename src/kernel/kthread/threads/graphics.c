@@ -11,6 +11,8 @@
 #include <syscall.h>
 #include <kernel/util.h>
 
+#include "../../drivers/mouse/mouse.h"
+
 // kernel-main.c
 extern kernel_context_t *kernel_context;
 
@@ -140,6 +142,7 @@ void kthread_graphics(void) {
             graphics_paint_rect(trail_x[current_idx], trail_y[current_idx], size, size, color, 255);
         }
 
-        graphics_swap_buffers(true);
+        graphics_swap_buffers(false);
+        sleep(16);
     }
 }

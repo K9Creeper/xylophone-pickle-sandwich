@@ -209,6 +209,7 @@ void setup_fault_handlers(void)
 // Setup: Drivers
 #include "drivers/pit/pit.h"
 #include "drivers/keyboard/keyboard.h"
+#include "drivers/mouse/mouse.h"
 #include "drivers/syscalls/syscalls.h"
 static void test(registers_t *d, uint32_t t)
 {
@@ -220,6 +221,7 @@ void setup_drivers(void)
 {
     syscalls_init();
     keyboard_init();
+    mouse_init();
     pit_init(1000);
 
     // pit_add_handle((pit_handle_t)test);
