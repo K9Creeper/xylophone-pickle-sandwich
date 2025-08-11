@@ -142,6 +142,10 @@ void kthread_graphics(void) {
             graphics_paint_rect(trail_x[current_idx], trail_y[current_idx], size, size, color, 255);
         }
 
+        mouse_info_t m = mouse_get_info();
+
+        graphics_paint_rect(m.x, m.y, 20, 20, 0xFF00FF, 255);
+
         graphics_swap_buffers(false);
         sleep(16);
     }
