@@ -66,20 +66,80 @@ static uint32_t hsv_to_rgb(float h, float s, float v)
     return (R << 16) | (G << 8) | B;
 }
 
-void kthread_graphics(void)
+static void graphics_paint_rect(int x, int y, int width, int height, uint32_t color, uint8_t alpha)
 {
-    graphics_init(kernel_context->video_state.lfb, kernel_context->video_state.width, kernel_context->video_state.height, kernel_context->video_state.pitch, kernel_context->video_state.bpp);
-    printf("Init Graphics 0x%X\n", kernel_context->video_state.lfb);
-
-    printf("Rendering...\n");
-    while (true)
+    for (int py = 0; py < height; py++)
     {
-        graphics_fill_screen(0xf0c472);
+        for (int px = 0; px < width; px++)
+        {
+            int draw_x = x + px;
+            int draw_y = y + py;
+            if (draw_x >= 0 && draw_x < kernel_context->video_state.width &&
+                draw_y >= 0 && draw_y < kernel_context->video_state.height)
+            {
+                graphics_paint(draw_x, draw_y, color, alpha);
+            }
+        }
+    }
+}
 
-        
+#define TRAIL_LENGTH 50
 
-        graphics_swap_buffers(false);
+void kthread_graphics(void) {
+    graphics_init(kernel_context->video_state.lfb, kernel_context->video_state.width, kernel_context->video_state.height, kernel_context->video_state.pitch, kernel_context->video_state.bpp);
 
-        sleep(16);
+    // Bouncing block properties
+    int size = 10;
+    int x = kernel_context->video_state.width / 2;
+    int y = kernel_context->video_state.height / 2;
+    int dx = 5;
+    int dy = 3;
+
+    // Trail properties
+    int trail_x[TRAIL_LENGTH];
+    int trail_y[TRAIL_LENGTH];
+    int trail_idx = 0;
+
+    float hue = 0.0f;
+
+    while (true) {
+        graphics_fill_screen(0x000000); // Black background
+
+        // Update bouncing block position
+        x += dx;
+        y += dy;
+
+        // Bounce horizontally
+        if (x <= 0 || x >= kernel_context->video_state.width - size) {
+            dx = -dx;
+        }
+
+        // Bounce vertically
+        if (y <= 0 || y >= kernel_context->video_state.height - size) {
+            dy = -dy;
+        }
+
+        // Store the current position in the trail array
+        trail_x[trail_idx] = x;
+        trail_y[trail_idx] = y;
+        trail_idx = (trail_idx + 1) % TRAIL_LENGTH;
+
+        // Animate the color shift
+        hue += 0.005f;
+        if (hue > 1.0f) hue -= 1.0f;
+
+        // Draw the snake trail
+        for (int i = 0; i < TRAIL_LENGTH; i++) {
+            // Calculate an offset to get the color for each part of the trail
+            float trail_hue = hue - ((float)i / TRAIL_LENGTH) * 0.5f;
+            if (trail_hue < 0.0f) trail_hue += 1.0f;
+
+            uint32_t color = hsv_to_rgb(trail_hue, 1.0f, 1.0f);
+
+            int current_idx = (trail_idx - 1 - i + TRAIL_LENGTH) % TRAIL_LENGTH;
+            graphics_paint_rect(trail_x[current_idx], trail_y[current_idx], size, size, color, 255);
+        }
+
+        graphics_swap_buffers(true);
     }
 }
