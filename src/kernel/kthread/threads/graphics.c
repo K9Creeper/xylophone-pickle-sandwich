@@ -27,7 +27,8 @@ void kthread_graphics(void)
 
         mouse_info_t m = mouse_get_info();
 
-        graphics_paint_icon((const uint32_t*)mouse_cursor, m.x, m.y, 16, 16);
+        graphics_paint_icon((const uint32_t *)mouse_cursor, m.x, m.y, 9, 14);
+
         graphics_swap_buffers(false);
         sleep(16);
     }

@@ -10,6 +10,10 @@
 
 #include <kernel/stdlib.h>
 
+#include <graphics/fonts.h>
+
+#include <math.h>
+
 static framebuffer_t foreground_buffer;
 static framebuffer_t background_buffer;
 
@@ -132,14 +136,17 @@ void graphics_paint_rect(int x, int y, int w, int h, uint32_t color, uint8_t opa
     }
 }
 
-#include <stdio.h>
-
-void graphics_paint_icon(const uint32_t*icon, int x, int y, int size_x, int size_y)
+void graphics_paint_icon(const uint32_t *icon, int x, int y, int size_x, int size_y)
 {
     for (int j = 0; j < size_y; j++)
     {
+        if (y + j > background_buffer.height)
+            break;
         for (int i = 0; i < size_x; i++)
         {
+            if (x + i > background_buffer.width)
+                break;
+
             uint32_t src = icon[j * size_x + i];
             if (src == 0x0 /* 0x0 == transparent */)
                 continue;
@@ -148,6 +155,95 @@ void graphics_paint_icon(const uint32_t*icon, int x, int y, int size_x, int size
                 continue;
             *dst = src;
         }
+    }
+}
+
+void graphics_paint_char(char character, int x, int y, float font_width, float font_height,
+                         uint32_t color, uint8_t opacity, float h_scale, float v_scale,
+                         bool flip_x, bool flip_y)
+{
+    if (!background_buffer.lfb || opacity == 0)
+        return;
+
+    if ((unsigned char)character >= 128)
+        return;
+
+    float scale_x = (font_width / 8.0f) * h_scale;
+    float scale_y = (font_height / 8.0f) * v_scale;
+
+    for (int row = 0; row < 8; row++)
+    {
+        uint8_t bits = font8x8_basic[(uint8_t)character][row];
+        for (int col = 0; col < 8; col++)
+        {
+            if (bits & (1 << col))
+            {
+                // Flipping
+                int draw_col = flip_x ? (7 - col) : col;
+                int draw_row = flip_y ? (7 - row) : row;
+
+                int px = x + (int)(draw_col * scale_x);
+                int py = y + (int)(draw_row * scale_y);
+
+                int block_w = (int)ceil_d(scale_x);
+                int block_h = (int)ceil_d(scale_y);
+
+                for (int dy = 0; dy < block_h; dy++)
+                {
+                    int drawY = py + dy;
+                    if (drawY < 0 || drawY >= background_buffer.height)
+                        continue;
+
+                    for (int dx = 0; dx < block_w; dx++)
+                    {
+                        int drawX = px + dx;
+                        if (drawX < 0 || drawX >= background_buffer.width)
+                            continue;
+
+                        uint32_t *pixel = framebuffer_get_pixel(&background_buffer, drawX, drawY);
+                        if (!pixel)
+                            continue;
+
+                        if (opacity == 255)
+                        {
+                            *pixel = color;
+                        }
+                        else
+                        {
+                            uint8_t srcR = (color >> 16) & 0xFF;
+                            uint8_t srcG = (color >> 8) & 0xFF;
+                            uint8_t srcB = color & 0xFF;
+
+                            uint8_t dstR = (*pixel >> 16) & 0xFF;
+                            uint8_t dstG = (*pixel >> 8) & 0xFF;
+                            uint8_t dstB = *pixel & 0xFF;
+
+                            *pixel = (blend_channel(srcR, dstR, opacity) << 16) |
+                                     (blend_channel(srcG, dstG, opacity) << 8) |
+                                     blend_channel(srcB, dstB, opacity);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void graphics_paint_string(const char *str, int len, int x, int y, float font_width, float font_height,
+                           uint32_t color, uint8_t opacity, float h_scale, float v_scale,
+                           int spacing_x, int spacing_y, bool flip_x, bool flip_y)
+{
+    if (!str || len <= 0)
+        return;
+
+    for (int i = 0; i < len; i++)
+    {
+        graphics_paint_char(str[i],
+                            x + i * ((int)ceil_d(font_width * h_scale) + spacing_x),
+                            y,
+                            font_width, font_height, color, opacity,
+                            h_scale, v_scale,
+                            flip_x, flip_y);
     }
 }
 

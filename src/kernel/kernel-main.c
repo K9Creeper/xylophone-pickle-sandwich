@@ -208,7 +208,8 @@ void setup_drivers(void)
     syscalls_init();
     keyboard_init();
     mouse_init();
-    pit_init(500);
+    // Should maybe go below 1000hz?
+    pit_init(1000);
 
     // pit_add_handle((pit_handle_t)test);
 }
