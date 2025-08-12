@@ -61,6 +61,12 @@ uint32_t ordered_array_size(ordered_array_t* oa) {
     return oa ? oa->size : (uint32_t)-1;
 }
 
+void ordered_array_clear(ordered_array_t* oa){
+    if (!oa || !oa->array) return;
+    memset(oa->array, 0, oa->max_size * sizeof(type_t));
+    oa->size = 0;
+}
+
 type_t ordered_array_get(ordered_array_t* oa, uint32_t index) {
     if (!oa || index >= oa->size) return NULL;
     return oa->array[index];
