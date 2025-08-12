@@ -403,6 +403,37 @@ void *heap_manager_malloc(heap_manager_t *heap, uint32_t size, bool should_align
     return NULL;
 }
 
+void heap_manager_free_all(heap_manager_t *heap)
+{
+    if (!heap || heap->status != HEAP_INITIALIZED)
+        return;
+
+    heap_header_t *hole = (heap_header_t *)heap->start_address;
+    hole->size = heap->end_address - heap->start_address;
+    hole->magic = HEAP_MAGIC;
+    hole->is_hole = true;
+
+    heap_footer_t *footer = (heap_footer_t *)((uint32_t)hole + hole->size - sizeof(heap_footer_t));
+    footer->header = hole;
+    footer->magic = HEAP_MAGIC;
+
+    ordered_array_clear(&heap->heap_array);
+    ordered_array_insert(&heap->heap_array, (type_t)hole);
+
+    if (heap->end_address - heap->start_address > HEAP_MIN_SIZE)
+    {
+        contract(heap, HEAP_MIN_SIZE);
+
+        hole->size = heap->end_address - heap->start_address;
+        footer = (heap_footer_t *)((uint32_t)hole + hole->size - sizeof(heap_footer_t));
+        footer->header = hole;
+        footer->magic = HEAP_MAGIC;
+
+        ordered_array_clear(&heap->heap_array);
+        ordered_array_insert(&heap->heap_array, (type_t)hole);
+    }
+}
+
 void heap_manager_free(heap_manager_t *heap, uint32_t address)
 {
     if (heap->status == HEAP_INITIALIZED)
