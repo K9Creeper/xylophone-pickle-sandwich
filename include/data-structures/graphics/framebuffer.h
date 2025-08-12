@@ -15,7 +15,8 @@ typedef struct framebuffer_s
     uint32_t height;
     uint32_t pitch;
     uint32_t bpp;
-
+    uint32_t bytes_per_pixel;
+    
     uint32_t size;
 } framebuffer_t;
 

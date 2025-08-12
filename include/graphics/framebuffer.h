@@ -6,11 +6,17 @@
 #define _FRAMEBUFFER_H
 
 #include <data-structures/graphics/framebuffer.h>
+#include <memory.h>
 
 extern void framebuffer_init(framebuffer_t *fb, uint32_t *lfb, uint32_t width, uint32_t height, uint32_t pitch, uint32_t bpp);
 
-extern void framebuffer_clear(framebuffer_t *fb);
+static inline void framebuffer_clear(framebuffer_t* fb){
+    fast_memset(fb->lfb, 0, fb->size);
+}
 
-extern uint32_t* framebuffer_get_pixel(framebuffer_t *fb, int x, int y);
+static inline uint32_t* framebuffer_get_pixel(framebuffer_t *fb, int x, int y) {
+    const uint32_t bytes_per_pixel = fb->bpp / 8;
+    return (uint32_t*)((uint8_t*)fb->lfb + y * fb->pitch + x * bytes_per_pixel);
+}
 
 #endif
