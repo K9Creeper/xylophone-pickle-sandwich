@@ -63,7 +63,7 @@ uint32_t ordered_array_size(ordered_array_t* oa) {
 
 void ordered_array_clear(ordered_array_t* oa){
     if (!oa || !oa->array) return;
-    memset(oa->array, 0, oa->max_size * sizeof(type_t));
+    memset((uint8_t*)oa->array, 0, oa->max_size * sizeof(type_t));
     oa->size = 0;
 }
 
