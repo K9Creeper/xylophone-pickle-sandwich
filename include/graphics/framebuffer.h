@@ -15,8 +15,7 @@ static inline void framebuffer_clear(framebuffer_t* fb){
 }
 
 static inline uint32_t* framebuffer_get_pixel(framebuffer_t *fb, int x, int y) {
-    const uint32_t bytes_per_pixel = fb->bpp / 8;
-    return (uint32_t*)((uint8_t*)fb->lfb + y * fb->pitch + x * bytes_per_pixel);
+    return (uint32_t*)((uint8_t*)fb->lfb + y * fb->pitch + x * fb->bytes_per_pixel);
 }
 
 #endif

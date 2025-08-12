@@ -132,8 +132,23 @@ void graphics_paint_rect(int x, int y, int w, int h, uint32_t color, uint8_t opa
     }
 }
 
-void graphics_paint_icon(uint32_t** buffer, int x, int y){
-    
+#include <stdio.h>
+
+void graphics_paint_icon(const uint32_t*icon, int x, int y, int size_x, int size_y)
+{
+    for (int j = 0; j < size_y; j++)
+    {
+        for (int i = 0; i < size_x; i++)
+        {
+            uint32_t src = icon[j * size_x + i];
+            if (src == 0x0 /* 0x0 == transparent */)
+                continue;
+            uint32_t *dst = framebuffer_get_pixel(&background_buffer, x + i, y + j);
+            if (dst == NULL)
+                continue;
+            *dst = src;
+        }
+    }
 }
 
 void graphics_paint_framebuffer(framebuffer_t *fb, int x, int y)

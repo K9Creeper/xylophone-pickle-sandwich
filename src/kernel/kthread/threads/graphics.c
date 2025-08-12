@@ -17,19 +17,6 @@
 // kernel-main.c
 extern kernel_context_t *kernel_context;
 
-void draw_mouse_pointer(int x, int y)
-{
-    for (int j = 0; j < 16; j++)
-    {
-        for (int i = 0; i < 16; i++)
-        {
-            if (mouse_cursor[j][i] != 0x0) {
-                graphics_paint((x)+i,  (y)+j, mouse_cursor[j][i], 255);
-            } 
-        }
-    }
-}
-
 void kthread_graphics(void)
 {
     graphics_init(kernel_context->video_state.lfb, kernel_context->video_state.width, kernel_context->video_state.height, kernel_context->video_state.pitch, kernel_context->video_state.bpp);
@@ -40,8 +27,7 @@ void kthread_graphics(void)
 
         mouse_info_t m = mouse_get_info();
 
-        draw_mouse_pointer(m.x, m.y);
-
+        graphics_paint_icon((const uint32_t*)mouse_cursor, m.x, m.y, 16, 16);
         graphics_swap_buffers(false);
         sleep(16);
     }
