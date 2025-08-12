@@ -17,9 +17,6 @@ typedef struct framebuffer_s
     uint32_t bpp;
 
     uint32_t size;
-
-    uint32_t used_width;
-    uint32_t used_height;
 } framebuffer_t;
 
 #endif // FRAMEBUFFER_H

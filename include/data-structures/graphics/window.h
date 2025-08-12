@@ -1,6 +1,6 @@
 /// --------
 /// window.h
-/// @brief This file defines the graphical window structure.
+/// @brief This file defines the graphical window structure(s).
 
 #ifndef WINDOW_H
 #define WINDOW_H
