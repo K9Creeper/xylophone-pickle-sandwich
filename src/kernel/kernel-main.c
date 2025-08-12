@@ -266,8 +266,9 @@ void finish_scheduling(void)
     kthread_start("task-cleaner", 0, NULL);
     kthread_start("kthread_aids", 0, NULL);
 
-    if (!kernel_context->video_state.is_text_mode)
+    if (!kernel_context->video_state.is_text_mode){
         kthread_start("vesa-graphics", 0, NULL);
+    }
 
     pit_add_handle((pit_handle_t)scheduling_schedule);
 }

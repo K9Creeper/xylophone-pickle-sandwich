@@ -19,8 +19,6 @@ void framebuffer_init(framebuffer_t *fb, uint32_t *lfb, uint32_t width, uint32_t
     fb->bpp = bpp;
 
     fb->size = ((uint32_t)(lfb) + ((height - 1) * pitch + ((width - 1) * (bpp / 8)))) - (uint32_t)(lfb);
-    fb->used_width = 0;
-    fb->used_height = 0;
 
     framebuffer_clear(fb);
 }

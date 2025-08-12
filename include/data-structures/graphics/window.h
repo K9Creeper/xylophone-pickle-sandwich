@@ -12,6 +12,8 @@ typedef struct window_s{
     int x, y;
     int width, height;
     framebuffer_t fb;
+    int32_t z_index;
+    uint32_t flags;
 }window_t;
 
 #endif
