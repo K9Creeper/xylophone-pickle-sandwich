@@ -3,19 +3,41 @@
 
 #include <stdint.h>
 
-uint8_t inportb(unsigned short _port);
+static inline __attribute__((always_inline))
+uint8_t inportb(uint16_t port) {
+    uint8_t rv;
+    __asm__ volatile ("inb %1, %0" : "=a"(rv) : "dN"(port));
+    return rv;
+}
 
-void outportb(unsigned short _port, uint8_t _data);
+static inline __attribute__((always_inline))
+void outportb(uint16_t port, uint8_t data) {
+    __asm__ volatile ("outb %1, %0" :: "dN"(port), "a"(data));
+}
 
-uint16_t inports(unsigned short _port);
+static inline __attribute__((always_inline))
+uint16_t inports(uint16_t port) {
+    uint16_t rv;
+    __asm__ volatile ("inw %1, %0" : "=a"(rv) : "dN"(port));
+    return rv;
+}
 
-void outports(unsigned short _port, uint16_t _data);
+static inline __attribute__((always_inline))
+void outports(uint16_t port, uint16_t data) {
+    __asm__ volatile ("outw %1, %0" :: "dN"(port), "a"(data));
+}
 
-uint32_t inportl(unsigned short _port);
+static inline __attribute__((always_inline))
+uint32_t inportl(uint16_t port) {
+    uint32_t rv;
+    __asm__ volatile ("inl %1, %0" : "=a"(rv) : "dN"(port));
+    return rv;
+}
 
-void outportl(unsigned short _port, uint16_t _data);
-
-void call_asm(void *fn, void *arg);
+static inline __attribute__((always_inline))
+void outportl(uint16_t port, uint32_t data) {
+    __asm__ volatile ("outl %1, %0" :: "dN"(port), "a"(data));
+}
 
 void swap(int *p1, int *p2);
 
