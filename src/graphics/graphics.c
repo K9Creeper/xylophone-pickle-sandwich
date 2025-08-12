@@ -132,7 +132,9 @@ void graphics_paint_rect(int x, int y, int w, int h, uint32_t color, uint8_t opa
     }
 }
 
-#include <stdio.h>
+void graphics_paint_icon(uint32_t** buffer, int x, int y){
+    
+}
 
 void graphics_paint_framebuffer(framebuffer_t *fb, int x, int y)
 {
@@ -150,7 +152,6 @@ void graphics_paint_framebuffer(framebuffer_t *fb, int x, int y)
             uint32_t *src = framebuffer_get_pixel(fb, x, j);
             if (!dst || !src)
                 continue;
-            printf("Yuuuur\n");
             *dst = *src;
         }
     }

@@ -13,6 +13,7 @@ extern void graphics_init(uint32_t lfb_location, uint32_t width, uint32_t height
 extern void graphics_fill_screen(uint32_t color);
 extern void graphics_paint(int x, int y, uint32_t color, uint8_t opacity);
 extern void graphics_paint_rect(int x, int y, int w, int h, uint32_t color, uint8_t opacity);
+extern void graphics_paint_icon(uint32_t** buffer, int x, int y);
 extern void graphics_paint_framebuffer(framebuffer_t* framebuffer, int x, int y);
 
 // backbuffer

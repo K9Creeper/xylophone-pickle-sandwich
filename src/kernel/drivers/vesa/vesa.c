@@ -171,7 +171,7 @@ void vesa_map_buffer(void)
     if (!kernel_context->paging_manager.is_initialized)
         return;
     const uint32_t lfb = current_mode.info.physbase;
-    const uint32_t lfb_size = ((current_mode.info.height - 1) * current_mode.info.pitch + ((current_mode.info.width - 1) * (current_mode.info.bpp / 8)));
+    const uint32_t lfb_size = current_mode.info.width * current_mode.info.height * (current_mode.info.bpp / 8);
     const uint32_t lfb_max = lfb + lfb_size;
 
     paging_manager_identity_allocate_range(&kernel_context->paging_manager, lfb, lfb_max, true, true);

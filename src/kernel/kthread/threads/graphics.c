@@ -4,6 +4,7 @@
 
 #include <graphics/framebuffer.h>
 #include <graphics/graphics.h>
+#include <graphics/icons.h>
 
 #include <data-structures/kernel/kernel-context.h>
 
@@ -18,31 +19,12 @@ extern kernel_context_t *kernel_context;
 
 void draw_mouse_pointer(int x, int y)
 {
-    uint32_t cursor[16][16] = {
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x8a8e53,0x4b531d,0x4b531d,0x4b531d,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x8a8e53,0x4b531d,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x8a8e53,0x4b531d,0,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0,0}
-    ,{0,0x4b531d,0,0,0,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0}
-    ,{0,0,0,0,0,0x8a8e53,0x8a8e53,0,0,0,0,0,0,0,0,0}
-    ,{0,0,0,0,0,0,0x8a8e53,0x4b531d,0,0,0,0,0,0,0,0}
-    ,{0,0,0,0,0,0,0x4b531d,0x4b531d,0,0,0,0,0,0,0,0}
-};
-
     for (int j = 0; j < 16; j++)
     {
         for (int i = 0; i < 16; i++)
         {
-            if (cursor[j][i] != 0x0) {
-                graphics_paint((x)+i,  (y)+j, cursor[j][i], 255);
+            if (mouse_cursor[j][i] != 0x0) {
+                graphics_paint((x)+i,  (y)+j, mouse_cursor[j][i], 255);
             } 
         }
     }
