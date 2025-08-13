@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-static int _syscall(syscall_t i, int arg1, int arg2, int arg3)
+static inline int _syscall(syscall_t i, int arg1, int arg2, int arg3)
 {
     int ret;
     __asm__ volatile (
