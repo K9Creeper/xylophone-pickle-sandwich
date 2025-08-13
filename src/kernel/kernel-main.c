@@ -209,7 +209,7 @@ void setup_drivers(void)
     keyboard_init();
     mouse_init();
     // Should maybe go below 1000hz?
-    pit_init(1000);
+    pit_init(500);
 
     // pit_add_handle((pit_handle_t)test);
 }
@@ -279,7 +279,7 @@ void finish_scheduling(void)
 
 static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, const keyboard_map_t keyboard_map)
 {
-    if (keyboard_key.value != '\0' && keyboard_key.is_pressed && !keyboard_key.previously_pressed)
+    if (keyboard_key.value != '\0' && keyboard_key.is_pressed)
     {
         if (isletter(keyboard_key.value) || isdigit(keyboard_key.value) || keyboard_key.value == '\n' || keyboard_key.value == '\b')
             terminal_add_key(keyboard_key.value);

@@ -18,10 +18,7 @@ typedef struct mouse_info_s{
     int delta_x;
     int delta_y;
 
-    uint8_t prev_state[3];
     uint8_t curr_state[3];
 } mouse_info_t;
-
-typedef void (*mouse_input_handle_t)(const mouse_info_t* info);
 
 #endif

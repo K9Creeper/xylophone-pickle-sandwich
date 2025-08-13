@@ -13,7 +13,6 @@ typedef struct keyboard_key_s{
     char value;
 
     bool is_pressed;
-    bool previously_pressed;
 }keyboard_key_t;
 
 typedef keyboard_key_t* keyboard_map_t;
