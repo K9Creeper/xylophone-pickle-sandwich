@@ -10,7 +10,8 @@ typedef enum syscall_e{
     SYSCALL_SLEEP,
     SYSCALL_YIELD,
     SYSCALL_MALLOC,
-    SYSCALL_FREE
+    SYSCALL_FREE,
+    SYSCALL_GET_SYSTEM_TICK_COUNT,
 }syscall_t;
 
 #endif 

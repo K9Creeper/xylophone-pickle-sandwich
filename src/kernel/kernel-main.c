@@ -45,19 +45,37 @@ static void enable_keyboard_input(void);
 void kernel_main(uint32_t addr, uint32_t magic)
 {
     DISABLE_INTERRUPTS();
+    vga_terminal_write_string("Kernel: Interrupts disabled\n");
 
     setup_misc();
+    vga_terminal_write_string("Kernel: Misc setup done\n");
+
     setup_gdt();
+    vga_terminal_write_string("Kernel: GDT setup done\n");
+
     setup_idt();
+    vga_terminal_write_string("Kernel: IDT setup done\n");
+
     setup_early_heap();
+    vga_terminal_write_string("Kernel: Early heap setup done\n");
+
     setup_paging();
+    vga_terminal_write_string("Kernel: Paging setup done\n");
+
     setup_heap();
+    vga_terminal_write_string("Kernel: Heap setup done\n");
+
     setup_drivers();
+    vga_terminal_write_string("Kernel: Drivers setup done\n");
+
     setup_fault_handlers();
+    vga_terminal_write_string("Kernel: Fault handlers setup done\n");
 
     ENABLE_INTERRUPTS();
+    vga_terminal_write_string("Kernel: Interrupts enabled\n");
 
     enable_keyboard_input();
+    vga_terminal_write_string("Kernel: Keyboard input enabled\n");
 
     char buffer[4];
     while (true)
@@ -71,28 +89,41 @@ void kernel_main(uint32_t addr, uint32_t magic)
 
         if (strcmp(buffer, "y") == 0)
         {
+            vga_terminal_write_string("User selected graphical interface.\n");
+
             if (setup_vesa())
             {
-                vga_terminal_write_string("Graphical interface is unavaliable\n");
+                vga_terminal_write_string("Graphical interface is unavailable\n");
                 continue;
             }
+            vga_terminal_write_string("Graphical interface initialized.\n");
             break;
         }
         else if (strcmp(buffer, "n") == 0)
         {
+            vga_terminal_write_string("User selected text mode.\n");
             break;
+        }
+        else
+        {
+            vga_terminal_write_string("Invalid input. Please enter 'y' or 'n'.\n");
         }
     }
 
     DISABLE_INTERRUPTS();
-    setup_scheduling();
-    finish_scheduling();
-    ENABLE_INTERRUPTS();
+    vga_terminal_write_string("Kernel: Interrupts disabled before scheduling setup\n");
 
-    // This loop slows down the PIT?
-    // for (;;);
+    setup_scheduling();
+    vga_terminal_write_string("Kernel: Scheduling setup done\n");
+
+    finish_scheduling();
+    vga_terminal_write_string("Kernel: Scheduling started\n");
+
+    ENABLE_INTERRUPTS();
+    vga_terminal_write_string("Kernel: Interrupts enabled after scheduling\n");
 
 halt:
+    vga_terminal_write_string("Kernel halted.\n");
     for (;;)
     {
         __asm__ volatile("hlt");
@@ -106,7 +137,7 @@ halt:
 void setup_misc(void)
 {
     kernel_misc_drivers_serial_com1_init();
-    vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_MAGENTA, VGA_TERMINAL_COLOR_LIGHT_GREY);
+    vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_MAGENTA, VGA_TERMINAL_COLOR_DARK_GREY);
     vga_terminal_show_cursor(false);
 }
 
@@ -150,6 +181,16 @@ void setup_paging(void)
     {
         paging_init();
     }
+
+    uint32_t size_mb = kernel_context->physical_memory_size / (1024 * 1024);
+    if (size_mb > 0) {
+        vga_terminal_write_string("Kernel: Physical Memory setup for %d MB\n", size_mb);
+    } else {
+        uint32_t size_kb = kernel_context->physical_memory_size / 1024;
+        vga_terminal_write_string("Kernel: Physical Memory setup for %d KB\n", size_kb);
+    }
+
+    
 }
 
 void setup_heap(void)
@@ -197,7 +238,7 @@ void setup_fault_handlers(void)
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/mouse/mouse.h"
 #include "drivers/syscalls/syscalls.h"
- void test(registers_t *d, uint32_t t)
+void test(registers_t *d, uint32_t t)
 {
     if (t % pit_get_hz() == 0)
         vga_terminal_write_string("Tick %d\n", t);
@@ -209,7 +250,7 @@ void setup_drivers(void)
     keyboard_init();
     mouse_init();
     // Should maybe go below 1000hz?
-    pit_init(500);
+    pit_init(1000);
 
     // pit_add_handle((pit_handle_t)test);
 }
@@ -233,7 +274,8 @@ void kthread_idle(void)
 
 void kthread_aids(void)
 {
-    for (int i = 0; i < 10; i++);
+    for (int i = 0; i < 10; i++)
+        ;
 
     printf("Done!\n");
 
@@ -241,8 +283,8 @@ void kthread_aids(void)
 }
 
 // scheduling.c
-extern void* syscall_malloc(int size);
-extern void syscall_free(void* address);
+extern void *syscall_malloc(int size);
+extern void syscall_free(void *address);
 
 void setup_scheduling(void)
 {
@@ -251,9 +293,11 @@ void setup_scheduling(void)
     syscalls_register(SYSCALL_EXIT, (void *)scheduling_exit);
     syscalls_register(SYSCALL_SLEEP, (void *)scheduling_sleep);
     syscalls_register(SYSCALL_YIELD, (void *)scheduling_yield);
-    
+
     syscalls_register(SYSCALL_MALLOC, (void *)syscall_malloc);
     syscalls_register(SYSCALL_FREE, (void *)syscall_free);
+
+    syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void*)pit_get_tick);
 
     kthread_register((kthread_entry_t)kthread_idle, "idle-thread");
     kthread_register((kthread_entry_t)kthread_task_cleaner, "task-cleaner");
@@ -267,7 +311,8 @@ void finish_scheduling(void)
     kthread_start("task-cleaner", 0, NULL);
     kthread_start("kthread_aids", 0, NULL);
 
-    if (!kernel_context->video_state.is_text_mode){
+    if (!kernel_context->video_state.is_text_mode)
+    {
         kthread_start("vesa-graphics", 0, NULL);
     }
 
@@ -308,7 +353,18 @@ int setup_vesa(void)
 
     vesa_mode_t *vesa_modes = vesa_get_all_modes();
 
-    vga_terminal_write_string("VESA Options:\n");
+    // Gather valid modes into a temporary list for indexed selection
+    typedef struct {
+        int index;
+        int mode_number;
+        int width;
+        int height;
+    } selectable_mode_t;
+
+    selectable_mode_t valid_modes[VESA_MODE_SIZE];
+    int valid_count = 0;
+
+    vga_terminal_write_string("Available VESA modes (select by number):\n");
     for (int i = 0; i < VESA_MODE_SIZE; i++)
     {
         if (vesa_modes[i].number == 0 || vesa_modes[i].info.bpp != 32)
@@ -317,36 +373,61 @@ int setup_vesa(void)
         if (vesa_modes[i].info.width < min_width || vesa_modes[i].info.height < min_height)
             continue;
 
-        vga_terminal_write_string("Mode: %d %dx%d\n", vesa_modes[i].number, vesa_modes[i].info.width, vesa_modes[i].info.height);
+        valid_modes[valid_count].index = valid_count + 1;
+        valid_modes[valid_count].mode_number = vesa_modes[i].number;
+        valid_modes[valid_count].width = vesa_modes[i].info.width;
+        valid_modes[valid_count].height = vesa_modes[i].info.height;
+
+        vga_terminal_write_string("  %d) Mode %d - %dx%d\n", 
+            valid_modes[valid_count].index,
+            valid_modes[valid_count].mode_number,
+            valid_modes[valid_count].width,
+            valid_modes[valid_count].height);
+
+        valid_count++;
+    }
+
+    if (valid_count == 0)
+    {
+        vga_terminal_write_string("No valid VESA modes found.\n");
+        return 1;
     }
 
     char buffer[16];
     while (true)
     {
-        vga_terminal_write_string("Choose a mode: ");
+        vga_terminal_write_string("Choose a mode number (or 'q' to quit): ");
 
-        while (!terminal_get_input(buffer, 16))
+        while (!terminal_get_input(buffer, sizeof(buffer)))
         {
             __asm__ volatile("hlt");
         }
 
-        int mode = atoi(buffer);
-
-        bool invalid_pick = false;
-        for (int i = 0; i < VESA_MODE_SIZE; i++)
+        if (buffer[0] == 'q' || buffer[0] == 'Q')
         {
-            if (vesa_modes[i].number == mode)
-            {
-                if (vesa_modes[i].info.width < min_width || vesa_modes[i].info.height < min_height)
-                {
-                    invalid_pick = true;
-                    break;
-                }
-            }
+            vga_terminal_write_string("Cancelled mode selection.\n");
+            return 1; // cancel
         }
 
-        if (invalid_pick || vesa_set_mode(mode))
+        int choice = atoi(buffer);
+
+        if (choice < 1 || choice > valid_count)
+        {
+            vga_terminal_write_string("Invalid selection. Please enter a valid number.\n");
             continue;
+        }
+
+        int selected_mode = valid_modes[choice - 1].mode_number;
+        vga_terminal_write_string("Selected mode: %d - %dx%d\n", 
+            selected_mode,
+            valid_modes[choice - 1].width,
+            valid_modes[choice - 1].height);
+
+        if (vesa_set_mode(selected_mode))
+        {
+            vga_terminal_write_string("Failed to set the selected mode. Try another.\n");
+            continue;
+        }
 
         break;
     }

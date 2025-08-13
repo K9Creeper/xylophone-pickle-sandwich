@@ -23,13 +23,23 @@ void kthread_graphics(void)
 
     while (true)
     {
-        graphics_fill_screen(0xfada94);
-
         mouse_info_t m = mouse_get_info();
 
-        graphics_paint_icon((const uint32_t *)mouse_cursor, m.x, m.y, 9, 14);
 
-        graphics_swap_buffers(false);
+
+
+
+
+        
+
+
+
+
+
+        graphics_paint_icon((const uint32_t *)mouse_cursor, m.x, m.y, 8, 14);
+        // defaulted to black bg .... clears to black
+        graphics_swap_buffers(true);
+        // ~60 fps
         sleep(16);
     }
 }

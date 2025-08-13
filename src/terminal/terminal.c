@@ -9,18 +9,17 @@ static bool input_done = false;
 
 void terminal_add_key(char c)
 {
-    if (c == '\n')
-    {
-        if (input_pos < TERMINAL_INPUT_BUFFER_SIZE)
-            input_buffer[input_pos] = '\0';
-        else
-            input_buffer[TERMINAL_INPUT_BUFFER_SIZE - 1] = '\0';
+    if (input_done)
+        return;
 
+    if (c == '\n' || c == '\r')
+    {
+        input_buffer[input_pos] = '\0';
         input_done = true;
         return;
     }
 
-    if (c == '\b')
+    if (c == '\b' || c == 0x7F)
     {
         if (input_pos > 0)
         {
@@ -37,20 +36,21 @@ void terminal_add_key(char c)
     }
 }
 
-bool terminal_get_input(char *dest, uint32_t dest_size) {
-    if (!input_done || input_pos <= 0)
+bool terminal_get_input(char *dest, uint32_t dest_size)
+{
+    if (!input_done)
         return false;
 
-    // Make sure dest can hold the string including null terminator
-    if (dest_size <= input_pos)  // Not enough space
+    if (dest_size == 0)
         return false;
 
-    // Copy the input buffer to dest
-    memcpy(dest, input_buffer, input_pos);
+    if (dest_size <= (uint32_t)input_pos)
+        return false;
 
-    // Reset internal state
-    input_done = false;
+    memcpy(dest, input_buffer, input_pos + 1);
+
     input_pos = 0;
+    input_done = false;
 
     return true;
 }

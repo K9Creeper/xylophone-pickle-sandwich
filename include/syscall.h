@@ -16,4 +16,6 @@ void sleep(int ms);
 void* malloc(int size);
 void free(void* address);
 
+uint32_t get_system_tick_count(void);
+
 #endif

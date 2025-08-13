@@ -40,3 +40,7 @@ void* malloc(int size){
 void free(void* address){
     _syscall(SYSCALL_FREE, (uint32_t)address, 0, 0);
 }
+
+uint32_t get_system_tick_count(void){
+    _syscall(SYSCALL_GET_SYSTEM_TICK_COUNT, 0, 0, 0);
+}
