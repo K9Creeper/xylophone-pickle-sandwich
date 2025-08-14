@@ -59,10 +59,13 @@ void bios32_init(void)
     size = (uint32_t)(_bios32_helper_end) - (uint32_t)(_bios32_helper);
 }
 
+static inline void io_wait(void)
+{
+    outportb(0x80, 0);
+}
+
 // global-descriptor-table.s
 extern void _gdt_flush(void);
-// interrupt-descriptor-table.s
-extern void _idt_load(void);
 // ../interrupts/interrupt-request.c
 extern void kernel_interrupt_request_remap(void);
 void bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t *out_reg)
@@ -91,16 +94,15 @@ void bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t 
     memcpy((uint8_t *)(out_reg), (uint8_t *)(t), sizeof(registers16_t));
 
     _gdt_flush();
-    _idt_load();
-    __asm__ __volatile__("" ::: "memory");
+    kernel_interrupt_descriptor_table_init();
+    kernel_interrupt_descriptor_table_install();
 
     kernel_interrupt_request_remap();
-    __asm__ __volatile__("" ::: "memory");
+
+    ENABLE_INTERRUPTS();
 
     /*
-        ISSUE WITH RESTORATION
-        INTERRUPTS ARE ENABLED TOO QUICKLY
+        ISSUE WITH RESTORATION, NEEDED A SYNC DELAY
     */
-    ENABLE_INTERRUPTS();
-    __asm__ volatile("hlt" ::: "memory");
+    for (volatile uint8_t i = 0; i < 10; i++) { asm volatile("hlt"); }
 }
