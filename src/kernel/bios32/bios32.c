@@ -104,5 +104,5 @@ void bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t 
     /*
         ISSUE WITH RESTORATION, NEEDED A SYNC DELAY
     */
-    for (volatile uint8_t i = 0; i < 10; i++) { asm volatile("hlt"); }
+    for (volatile uint8_t i = 0; i < 20; i++) { asm volatile("hlt"); }
 }
