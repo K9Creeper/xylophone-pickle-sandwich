@@ -8,6 +8,7 @@
 #include <registers.h>
 
 extern void bios32_init(void);
+// re-enable interrupts manually.
 extern void bios32_service(uint8_t interrupt_num, registers16_t * in_reg, registers16_t * out_reg);
 
 #endif

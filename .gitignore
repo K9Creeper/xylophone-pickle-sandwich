@@ -8,5 +8,6 @@ debug-log.txt
 *.o
 *.bin
 *.img
+*.elf
 
 image.iso

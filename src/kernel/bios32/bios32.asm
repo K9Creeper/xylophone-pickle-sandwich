@@ -156,6 +156,9 @@ _intnum_ptr:
     mov eax, cr0
     inc eax
     mov cr0, eax
+    
+    cli
+    
     jmp CODE32:REBASE(protected_mode_32)
 protected_mode_32:use32
     mov ax, DATA32
@@ -175,9 +178,9 @@ protected_mode_32:use32
     
     ; restore esp
     mov esp, edx
-
-    sti
+    
     popa
+
     ret
 padding:
     db 0x0

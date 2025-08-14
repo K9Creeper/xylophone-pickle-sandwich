@@ -6,7 +6,7 @@
 .extern _pGDT
 
 _gdt_flush:
-  lgdt [ _pGDT ]      
+  lgdt [ _pGDT ]
   mov $0x10, %ax
   mov %ax, %ds
   mov %ax, %es

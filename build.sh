@@ -171,6 +171,8 @@ if grub-file --is-x86-multiboot2 build/build.bin; then
 
     echo -e "\nDisk image ready: build/os.img"
 
+    ./qemu.sh
+
 else
     echo -e "\033[1mFile does not have a valid Multiboot header.\033[0m"
 
