@@ -117,25 +117,60 @@ echo -e "-------------------------------\n"
 if [ -f "build/build.bin" ] && [ $COMP_ERROR == "0" ]; then
     # Check whether if the file has a valid Multiboot2 header.
 if grub-file --is-x86-multiboot2 build/build.bin; then
-    echo -e "File has a valid Multiboot header.\n"
+    echo -e "\033[1mCreating GRUB-bootable disk image\033[0m"
+    echo -e "--------------------------------------"
 
-    cp build/build.bin build/.iso/boot/build.bin
+    # 16 MB empty image
+    dd if=/dev/zero of=build/os.img bs=1M count=16
 
-    cleanBuild
+    # Create DOS partition table and a single FAT16 partition using all space
+    echo ",,c" | sudo sfdisk build/os.img
 
-    rmdir build/.bin
+    # Map partitions to loop device
+    LOOP_DEVICE=$(sudo losetup -Pf --show build/os.img)
+    PARTITION="${LOOP_DEVICE}p1"
 
-    echo -e ""
+    # Verify the partition exists
+    if [ ! -e "$PARTITION" ]; then
+        echo "Error: partition $PARTITION does not exist."
+        sudo losetup -d "$LOOP_DEVICE"
+        exit 1
+    fi
 
-    # Creating ISO with Grub
-    echo -e "\033[1mGrub-Mkrescue\033[0m"
-    echo -e "---------------"
-    grub-mkrescue -o build/image.iso build/.iso/
+    # Format the partition as FAT16
+    sudo mkfs.fat -F 16 "$PARTITION"
 
+    # Mount partition and copy kernel + optional programs
+    sudo mount "$PARTITION" /mnt
+    sudo mkdir -p /mnt/boot/grub
+    sudo cp build/build.bin /mnt/boot/kernel.bin
+
+    # Optional: copy extra programs
+    if [ -d build/programs ]; then
+        sudo mkdir -p /mnt/programs
+        sudo cp build/programs/* /mnt/programs/
+    fi
+
+    sudo mkdir -p /mnt/boot/grub
+    sudo cp build/boot/grub/grub.cfg /mnt/boot/grub/
+
+    # **Install GRUB while the partition is still mounted**
+    sudo grub-install \
+        --target=i386-pc \
+        --boot-directory=/mnt/boot \
+        --modules="part_msdos fat" \
+        "$LOOP_DEVICE"
+
+    # Unmount partition and detach loop device
+    sudo umount /mnt
+    sudo losetup -d "$LOOP_DEVICE"
+
+    # Clean up build binary
     rm build/build.bin
     #rm build/.iso/boot/build.bin
 
-    echo -e "\n"
+    echo -e "\nDisk image ready: build/os.img"
+
 else
     echo -e "\033[1mFile does not have a valid Multiboot header.\033[0m"
 

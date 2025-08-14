@@ -7,9 +7,6 @@
 debug-log.txt
 *.o
 *.bin
-
-*.lnk
-*.exe.lnk
-*.exe
+*.img
 
 image.iso
