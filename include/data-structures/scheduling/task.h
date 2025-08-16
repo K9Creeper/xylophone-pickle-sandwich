@@ -15,6 +15,8 @@
 #define TASK_MAX_NAME_LENGTH 25
 #define TASK_STACK_SIZE 0x2000
 
+#define TASK_MAX_FILESYSTEM_PATH_LENGTH 512
+
 typedef enum task_state_e
 {
     TASK_STATE_STOPPED,
@@ -71,6 +73,8 @@ typedef struct task_s
     int preempts;
     int yields;
     uint32_t blocked_count;
+
+    char directory[TASK_MAX_FILESYSTEM_PATH_LENGTH];
 
     bool is_priority;
 

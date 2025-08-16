@@ -51,7 +51,7 @@ void printf(const char* format, ...)
 {
     if (!is_initialized)
         return;
-    char buffer[256]; 
+    char buffer[512]; 
     int buffer_index = 0;
 
     va_list args;

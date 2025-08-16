@@ -12,6 +12,7 @@ typedef enum syscall_e{
     SYSCALL_MALLOC,
     SYSCALL_FREE,
     SYSCALL_GET_SYSTEM_TICK_COUNT,
+    SYSCALL_GET_TASK_DIRECTORY
 }syscall_t;
 
 #endif 

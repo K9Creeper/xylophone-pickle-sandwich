@@ -6,7 +6,7 @@
 
 #define TERMINAL_INPUT_BUFFER_SIZE 128
 
-extern void terminal_add_key(char c);
+extern bool terminal_add_key(char c);
 extern bool terminal_get_input(char *dest, uint32_t dest_size);
 
 #endif

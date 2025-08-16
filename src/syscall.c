@@ -44,3 +44,7 @@ void free(void* address){
 uint32_t get_system_tick_count(void){
     _syscall(SYSCALL_GET_SYSTEM_TICK_COUNT, 0, 0, 0);
 }
+
+void get_task_directory(char* buffer, uint32_t buffer_size){
+    _syscall(SYSCALL_GET_TASK_DIRECTORY, (uint32_t)buffer, buffer_size, 0);
+}

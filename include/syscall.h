@@ -18,4 +18,6 @@ void free(void* address);
 
 uint32_t get_system_tick_count(void);
 
+void get_task_directory(char* buffer, uint32_t buffer_size);
+
 #endif

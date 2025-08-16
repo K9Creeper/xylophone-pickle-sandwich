@@ -206,7 +206,7 @@ void vga_terminal_write_string(const char *format, ...)
 	if (!vga_terminal_buffer || !vga_terminal_is_using)
 		return;
 
-	char buffer[256];
+	char buffer[512];
 	int buffer_index = 0;
 
 	va_list args;

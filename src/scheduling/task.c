@@ -133,6 +133,9 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
     task->cs = 0x8;
     task->ds = 0x10;
 
+    if(kernel_context->filesystem.mount_count > 0)
+        memcpy(task->directory, "0:/", 4);
+
     memcpy(task->name, name, strlen(name) + 1);
 
     if (argc != 0)

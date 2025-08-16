@@ -12,6 +12,8 @@
 #include <kernel/util.h>
 #include "../kernel/drivers/pit/pit.h"
 
+#include <memory.h>
+#include <math.h>
 #include <stdio.h>
 
 extern void kernel_task_state_segment_set_stack(uint32_t kss, uint32_t kesp);
@@ -233,12 +235,9 @@ int scheduling_exit(void)
 
     return 0;
 }
-extern void test(registers_t *d, uint32_t t);
+
 int scheduling_schedule(registers_t *__reg_ /*unused*/, uint32_t tick)
 {
-    if (__reg_ != NULL)
-        test(NULL, tick);
-
     if (current_task == NULL)
     {
         current_task = task_queue_pop(&priority_ready_queue);
@@ -347,5 +346,14 @@ void syscall_free(void *address)
         if (current_task == NULL)
             break;
         heap_manager_free(current_task->heap_manger, (uint32_t)address);
+    });
+}
+
+void syscall_get_task_directory(char* buffer, uint32_t buffer_size){
+    INTERRUPT_SAFE_BLOCK({
+        if (current_task == NULL)
+            break;
+        if(buffer != NULL && buffer_size > 0)
+            memcpy(buffer, current_task->directory, imin(buffer_size, sizeof(current_task->directory)));
     });
 }

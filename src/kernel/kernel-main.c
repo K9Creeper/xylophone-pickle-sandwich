@@ -261,11 +261,6 @@ void setup_disk_manager(void)
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/mouse/mouse.h"
 #include "drivers/syscalls/syscalls.h"
-void test(registers_t *d, uint32_t t)
-{
-    if (t % pit_get_hz() == 0)
-        vga_terminal_write_string("Tick %d\n", t);
-}
 
 void setup_drivers(void)
 {
@@ -275,8 +270,6 @@ void setup_drivers(void)
     pci_init();
     // Should maybe go below 1000hz?
     pit_init(1000);
-
-    // pit_add_handle((pit_handle_t)test);
 }
 
 // ------------------------------------------------------------
@@ -303,6 +296,7 @@ void setup_filesystem(void)
 
 // kthread/thread/**
 extern void kthread_graphics(void);
+extern void kthread_vga_shell(void);
 extern void kthread_task_cleaner(void);
 
 void kthread_idle(void)
@@ -315,9 +309,8 @@ void kthread_idle(void)
 
 void kthread_aids(void)
 {
-    for (int i = 0; i < 10; i++);
-    
-    printf("Done!\n");
+    for (int i = 0; i < 10; i++)
+        ;
 
     scheduling_exit();
 }
@@ -325,7 +318,7 @@ void kthread_aids(void)
 // scheduling.c
 extern void *syscall_malloc(int size);
 extern void syscall_free(void *address);
-
+extern void syscall_get_task_directory(char* buffer, uint32_t buffer_size);
 void setup_scheduling(void)
 {
     scheduling_init();
@@ -336,14 +329,17 @@ void setup_scheduling(void)
 
     syscalls_register(SYSCALL_MALLOC, (void *)syscall_malloc);
     syscalls_register(SYSCALL_FREE, (void *)syscall_free);
-
+    
     syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void *)pit_get_tick);
+
+    syscalls_register(SYSCALL_GET_TASK_DIRECTORY, (void*)syscall_get_task_directory);
 
     kthread_register((kthread_entry_t)kthread_idle, "idle-thread");
     kthread_register((kthread_entry_t)kthread_task_cleaner, "task-cleaner");
     kthread_register((kthread_entry_t)kthread_aids, "kthread_aids");
 
     kthread_register((kthread_entry_t)kthread_graphics, "vesa-graphics");
+    kthread_register((kthread_entry_t)kthread_vga_shell, "vga-shell");
 }
 void finish_scheduling(void)
 {
@@ -354,6 +350,10 @@ void finish_scheduling(void)
     if (!kernel_context->video_state.is_text_mode)
     {
         kthread_start("vesa-graphics", 0, NULL);
+    }
+    else
+    {
+        kthread_start("vga-shell", 0, NULL);
     }
 
     pit_add_handle((pit_handle_t)scheduling_schedule);
@@ -366,10 +366,96 @@ static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, cons
 {
     if (keyboard_key.value != '\0' && keyboard_key.is_pressed)
     {
-        if (isletter(keyboard_key.value) || isdigit(keyboard_key.value) || keyboard_key.value == '\n' || keyboard_key.value == '\b')
-            terminal_add_key(keyboard_key.value);
+        char c = keyboard_key.value;
 
-        vga_terminal_write(&keyboard_key.value, 1);
+        if (isletter(c) || isdigit(c) || ispunct(c) || c == ' ' || c == '\n' || c == '\b')
+        {
+            if (keyboard_map[KEY_LEFT_SHIFT].is_pressed || keyboard_map[KEY_RIGHT_SHIFT].is_pressed)
+            {
+                if (c >= 'a' && c <= 'z')
+                {
+                    c -= ('a' - 'A'); // lowercase -> uppercase
+                }
+                else
+                {
+                    switch (c)
+                    {
+                    case '1':
+                        c = '!';
+                        break;
+                    case '2':
+                        c = '@';
+                        break;
+                    case '3':
+                        c = '#';
+                        break;
+                    case '4':
+                        c = '$';
+                        break;
+                    case '5':
+                        c = '%';
+                        break;
+                    case '6':
+                        c = '^';
+                        break;
+                    case '7':
+                        c = '&';
+                        break;
+                    case '8':
+                        c = '*';
+                        break;
+                    case '9':
+                        c = '(';
+                        break;
+                    case '0':
+                        c = ')';
+                        break;
+                    case '-':
+                        c = '_';
+                        break;
+                    case '=':
+                        c = '+';
+                        break;
+                    case '[':
+                        c = '{';
+                        break;
+                    case ']':
+                        c = '}';
+                        break;
+                    case '\\':
+                        c = '|';
+                        break;
+                    case ';':
+                        c = ':';
+                        break;
+                    case '\'':
+                        c = '"';
+                        break;
+                    case ',':
+                        c = '<';
+                        break;
+                    case '.':
+                        c = '>';
+                        break;
+                    case '/':
+                        c = '?';
+                        break;
+                    case '`':
+                        c = '~';
+                        break;
+                    default:
+                        break; // leave other chars unchanged
+                    }
+                }
+            }
+
+            if (terminal_add_key(c))
+                vga_terminal_write(&c, 1);
+        }
+        else
+        {
+            return;
+        }
     }
 }
 void enable_keyboard_input(void)
@@ -439,7 +525,10 @@ int setup_vesa(void)
     {
         vga_terminal_write_string("Choose a mode number (or 'q' to quit): ");
 
-        while (!terminal_get_input(buffer, sizeof(buffer)));
+        while (!terminal_get_input(buffer, sizeof(buffer)))
+        {
+            __asm__ volatile("hlt");
+        }
 
         if (buffer[0] == 'q' || buffer[0] == 'Q')
         {

@@ -12,7 +12,7 @@
 #include "../../interrupts/interrupt-request.h"
 
 // US QWERTY keymap
-static keyboard_key_t keymap[128] = {
+static keyboard_key_t keymap[MAX_KEYBOARD_KEYS] = {
     {0, (char *)"None", '\0', false},
     {1, (char *)"Escape", 27, false},
     {2, (char *)"1", '1', false},

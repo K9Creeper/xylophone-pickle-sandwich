@@ -185,8 +185,8 @@ void graphics_paint_char(char character, int x, int y, float font_width, float f
                 int px = x + (int)(draw_col * scale_x);
                 int py = y + (int)(draw_row * scale_y);
 
-                int block_w = (int)ceil_d(scale_x);
-                int block_h = (int)ceil_d(scale_y);
+                int block_w = (int)ceilf(scale_x);
+                int block_h = (int)ceilf(scale_y);
 
                 for (int dy = 0; dy < block_h; dy++)
                 {
@@ -239,7 +239,7 @@ void graphics_paint_string(const char *str, int len, int x, int y, float font_wi
     for (int i = 0; i < len; i++)
     {
         graphics_paint_char(str[i],
-                            x + i * ((int)ceil_d(font_width * h_scale) + spacing_x),
+                            x + i * ((int)ceilf(font_width * h_scale) + spacing_x),
                             y,
                             font_width, font_height, color, opacity,
                             h_scale, v_scale,

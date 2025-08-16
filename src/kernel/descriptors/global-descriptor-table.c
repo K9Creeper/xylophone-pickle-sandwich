@@ -11,7 +11,6 @@
 
 #include <stdio.h>
 
-#define NULL 0
 #define GDT_GRANULARITY 0xCF
 
 #define GDT_ACCESS_CODE_PL0 0x9A
@@ -37,7 +36,7 @@ void kernel_global_descriptor_table_init(void)
 
 void kernel_global_descriptor_table_install(void)
 {
-    kernel_global_descriptor_set_gate(NULL, NULL, NULL, NULL, NULL);
+    kernel_global_descriptor_set_gate(0, 0, 0, 0, 0);
 
     // kernel (32-bit)
     kernel_global_descriptor_set_gate(1, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_PL0, GDT_GRANULARITY);

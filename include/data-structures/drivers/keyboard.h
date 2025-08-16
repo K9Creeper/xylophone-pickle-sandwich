@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MAX_KEYBOARD_KEYS 128
+
 typedef struct keyboard_key_s{
     uint16_t index;
     char* keyname;
