@@ -154,8 +154,6 @@ void keyboard_init(void)
         keymap[i].is_pressed = false;
     }
 
-    input_handle = NULL;
-
     kernel_interrupt_request_set_handle(1, keyboard_handler);
 }
 

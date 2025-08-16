@@ -10,6 +10,9 @@
 #include <memory-management/paging-manager.h>
 #include <memory-management/heap-manager.h>
 
+#include <disk-manager/disk-manager.h>
+#include <filesystem/filesystem.h>
+
 typedef struct kernel_context_video_state_s{
     bool is_text_mode;
     
@@ -27,6 +30,9 @@ typedef struct kernel_context_s{
 
     uint32_t physical_memory_size;
 
+    disk_manager_t disk_manager;
+    filesystem_t filesystem;
+    
     kernel_context_video_state_t video_state;
 }kernel_context_t;
 

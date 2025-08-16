@@ -34,6 +34,8 @@ extern volatile void *_intnum_ptr;
 #define REBASE(sym) \
     ((void *)((uint32_t)(REBASE_ADDRESS) + ((uint32_t)(sym) - (uint32_t)_bios32_helper)))
 
+#define CPU_SYNC_DELAY() do { for (volatile uint8_t i = 0; i < 20; i++) asm volatile("hlt"); } while(0)
+
 void (*rebased_bios32_helper)(void) = (void *)REBASE_ADDRESS;
 
 interrupt_descriptor_table_ptr_t real_idt_ptr;
@@ -68,6 +70,7 @@ static inline void io_wait(void)
 extern void _gdt_flush(void);
 // ../interrupts/interrupt-request.c
 extern void kernel_interrupt_request_remap(void);
+
 void bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t *out_reg)
 {
     void *new_code_base = (void *)(REBASE_ADDRESS);
@@ -104,5 +107,5 @@ void bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t 
     /*
         ISSUE WITH RESTORATION, NEEDED A SYNC DELAY
     */
-    for (volatile uint8_t i = 0; i < 20; i++) { asm volatile("hlt"); }
+    CPU_SYNC_DELAY();
 }

@@ -82,6 +82,38 @@ int memcmp(const void *s1, const void *s2, uint32_t n)
   return 0;
 }
 
+void trim(char *str) {
+    if (!str) return;
+
+    char *start = str;
+    while (*start == ' ' || *start == '\t' || *start == '\n' || *start == '\r') {
+        start++;
+    }
+
+    if (*start == '\0') {
+        *str = '\0';
+        return;
+    }
+
+    char *end = start;
+    while (*end != '\0') {
+        end++;
+    }
+    end--; 
+
+    while (end > start && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) {
+        end--;
+    }
+
+    *(end + 1) = '\0';
+
+    char *dst = str;
+    while (*start) {
+        *dst++ = *start++;
+    }
+    *dst = '\0';
+}
+
 bool equal(const char *a, const char *b)
 {
   int len = strlen(a);

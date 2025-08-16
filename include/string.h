@@ -8,10 +8,18 @@ bool islower(const char c);
 bool isdigit(const char c);
 bool ispunct(const char c);
 
+static inline char toupper(char c) {
+    if (c >= 'a' && c <= 'z')
+        return (char)(c - ('a' - 'A'));
+    return c;
+}
+
 int strlen(const char *str);
 char *strtok(char *str, const char *delim, char *out);
 int strcmp(const char *s1, const char *s2);
 int memcmp(const void* s1, const void* s2, uint32_t n);
+
+void trim(char* str);
 
 bool equal(const char *a, const char *b);
 

@@ -37,7 +37,9 @@ static void setup_gdt(void);
 static void setup_idt(void);
 static void setup_fault_handlers(void);
 static int setup_vesa(void);
+static void setup_disk_manager(void);
 static void setup_drivers(void);
+static void setup_filesystem(void);
 static void setup_scheduling(void);
 static void finish_scheduling(void);
 static void enable_keyboard_input(void);
@@ -65,8 +67,14 @@ void kernel_main(uint32_t addr, uint32_t magic)
     setup_heap();
     vga_terminal_write_string("Kernel: Heap setup done\n");
 
+    setup_disk_manager();
+    vga_terminal_write_string("Kernel: Disk setup done\n");
+
     setup_drivers();
     vga_terminal_write_string("Kernel: Drivers setup done\n");
+
+    setup_filesystem();
+    vga_terminal_write_string("Kernel: Filesystem setup done\n");
 
     setup_fault_handlers();
     vga_terminal_write_string("Kernel: Fault handlers setup done\n");
@@ -82,7 +90,7 @@ void kernel_main(uint32_t addr, uint32_t magic)
     {
         vga_terminal_write_string("Enter a graphical interface (y/n): ");
 
-        while (!terminal_get_input(buffer, 128))
+        while (!terminal_get_input(buffer, sizeof(buffer)))
         {
             __asm__ volatile("hlt");
         }
@@ -147,6 +155,10 @@ void setup_misc(void)
 #include "bios32/bios32.h"
 #include "descriptors/task-state-segment.h"
 #include "descriptors/interrupt-descriptor-table.h"
+
+// ../interrupts/interrupt-request.c
+extern void kernel_interrupt_request_remap(void);
+
 static void setup_gdt(void)
 {
     kernel_global_descriptor_table_init();
@@ -157,9 +169,11 @@ static void setup_gdt(void)
     get_esp(esp);
     kernel_task_state_segment_int(5, 0x10, esp);
 }
+
 static void setup_idt(void)
 {
     kernel_interrupt_descriptor_table_init();
+    kernel_interrupt_request_remap();
     kernel_interrupt_descriptor_table_install();
 }
 
@@ -183,14 +197,15 @@ void setup_paging(void)
     }
 
     uint32_t size_mb = kernel_context->physical_memory_size / (1024 * 1024);
-    if (size_mb > 0) {
+    if (size_mb > 0)
+    {
         vga_terminal_write_string("Kernel: Physical Memory setup for %d MB\n", size_mb);
-    } else {
+    }
+    else
+    {
         uint32_t size_kb = kernel_context->physical_memory_size / 1024;
         vga_terminal_write_string("Kernel: Physical Memory setup for %d KB\n", size_kb);
     }
-
-    
 }
 
 void setup_heap(void)
@@ -231,10 +246,18 @@ void setup_fault_handlers(void)
 {
     kernel_interrupt_service_set_fault_handle(14, page_fault_handler);
 }
+// ------------------------------------------------------------
+// Setup: Disk
+#include "disk-manager/disk-manager.h"
+void setup_disk_manager(void)
+{
+    kdisk_manager_init();
+}
 
 // ------------------------------------------------------------
 // Setup: Drivers
 #include "drivers/pit/pit.h"
+#include "drivers/pci/pci.h"
 #include "drivers/keyboard/keyboard.h"
 #include "drivers/mouse/mouse.h"
 #include "drivers/syscalls/syscalls.h"
@@ -249,10 +272,28 @@ void setup_drivers(void)
     syscalls_init();
     keyboard_init();
     mouse_init();
+    pci_init();
     // Should maybe go below 1000hz?
     pit_init(1000);
 
     // pit_add_handle((pit_handle_t)test);
+}
+
+// ------------------------------------------------------------
+// Setup: Filesystem
+#include "filesystem/filesystem.h"
+void setup_filesystem(void)
+{
+    uint8_t count = 0;
+    disk_device_t *devices = disk_manager_get_devices(&kernel_context->disk_manager, &count);
+    vga_terminal_write_string("Kernel: Disks %d\n", count);
+    for (uint8_t i = 0; i < count; i++)
+    {
+        ide_device_t *dev = devices[i].dev;
+        vga_terminal_write_string(" Disk %d - %s\n", i, dev->model);
+    }
+
+    kernel_filesystem_init();
 }
 
 // ------------------------------------------------------------
@@ -274,9 +315,8 @@ void kthread_idle(void)
 
 void kthread_aids(void)
 {
-    for (int i = 0; i < 10; i++)
-        ;
-
+    for (int i = 0; i < 10; i++);
+    
     printf("Done!\n");
 
     scheduling_exit();
@@ -297,7 +337,7 @@ void setup_scheduling(void)
     syscalls_register(SYSCALL_MALLOC, (void *)syscall_malloc);
     syscalls_register(SYSCALL_FREE, (void *)syscall_free);
 
-    syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void*)pit_get_tick);
+    syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void *)pit_get_tick);
 
     kthread_register((kthread_entry_t)kthread_idle, "idle-thread");
     kthread_register((kthread_entry_t)kthread_task_cleaner, "task-cleaner");
@@ -346,6 +386,7 @@ int setup_vesa(void)
 {
     const int min_width = 640;
     const int min_height = 400;
+
     if (vesa_init())
         return 1;
 
@@ -354,7 +395,8 @@ int setup_vesa(void)
     vesa_mode_t *vesa_modes = vesa_get_all_modes();
 
     // Gather valid modes into a temporary list for indexed selection
-    typedef struct {
+    typedef struct
+    {
         int index;
         int mode_number;
         int width;
@@ -378,11 +420,10 @@ int setup_vesa(void)
         valid_modes[valid_count].width = vesa_modes[i].info.width;
         valid_modes[valid_count].height = vesa_modes[i].info.height;
 
-        vga_terminal_write_string("  %d) Mode %d - %dx%d\n", 
-            valid_modes[valid_count].index,
-            valid_modes[valid_count].mode_number,
-            valid_modes[valid_count].width,
-            valid_modes[valid_count].height);
+        vga_terminal_write_string("  %d) %dx%d\n",
+                                  valid_modes[valid_count].index,
+                                  valid_modes[valid_count].width,
+                                  valid_modes[valid_count].height);
 
         valid_count++;
     }
@@ -398,10 +439,7 @@ int setup_vesa(void)
     {
         vga_terminal_write_string("Choose a mode number (or 'q' to quit): ");
 
-        while (!terminal_get_input(buffer, sizeof(buffer)))
-        {
-            __asm__ volatile("hlt");
-        }
+        while (!terminal_get_input(buffer, sizeof(buffer)));
 
         if (buffer[0] == 'q' || buffer[0] == 'Q')
         {
@@ -418,10 +456,10 @@ int setup_vesa(void)
         }
 
         int selected_mode = valid_modes[choice - 1].mode_number;
-        vga_terminal_write_string("Selected mode: %d - %dx%d\n", 
-            selected_mode,
-            valid_modes[choice - 1].width,
-            valid_modes[choice - 1].height);
+        vga_terminal_write_string("Selected mode: %d - %dx%d\n",
+                                  selected_mode,
+                                  valid_modes[choice - 1].width,
+                                  valid_modes[choice - 1].height);
 
         if (vesa_set_mode(selected_mode))
         {

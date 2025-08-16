@@ -8,6 +8,17 @@
 #include <stdint.h>
 #include <data-structures/filesystem/fat.h>
 
+typedef enum {
+    FAT16_FLAG_READ_ONLY = 1 << 0,         /* Indicates that the file is read-only */
+    FAT16_FLAG_HIDDEN = 1 << 1,            /* Indicates a hidden file */
+    FAT16_FLAG_SYSTEM = 1 << 2,            /* Indicates a system file */
+    FAT16_FLAG_VOLUME_LABEL = 1 << 3,      /* Indicates a special entry containing the volume label */
+    FAT16_FLAG_SUBDIRECTORY = 1 << 4,      /* Indicates that the entry describes a subdirectory */
+    FAT16_FLAG_ARCHIVE = 1 << 5,           /* Archive flag */
+    FAT16_FLAG_UNUSED1 = 1 << 6,           /* Not used; must be set to 0 */
+    FAT16_FLAG_UNUSED2 = 1 << 7            /* Not used; must be set to 0 */
+} fat16_flag_t;
+
 typedef struct fat16_boot_record_s
 {
     fat_boot_record_t boot_record; // 0
@@ -54,12 +65,6 @@ typedef struct fat_entry_s
 
     uint32_t file_size; // 28
 } __attribute__((packed)) fat_entry_t;
-
-typedef struct fat_file_identifier_s
-{
-    int16_t directory;
-    int16_t index;
-} fat_file_identifier_t;
 
 #endif
 

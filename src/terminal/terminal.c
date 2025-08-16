@@ -37,7 +37,7 @@ void terminal_add_key(char c)
 }
 
 bool terminal_get_input(char *dest, uint32_t dest_size)
-{
+{    
     if (!input_done)
         return false;
 
