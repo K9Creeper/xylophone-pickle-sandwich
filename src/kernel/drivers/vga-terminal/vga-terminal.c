@@ -48,7 +48,7 @@ static void update_cursor(int x, int y)
 	outportb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }
 
-static void put_char(char c)
+void vga_terminal_putc(char c)
 {
 	put_entry_at(c, vga_terminal_color, vga_terminal_column, vga_terminal_row);
 	if (++vga_terminal_column == VGA_TERMINAL_WIDTH)

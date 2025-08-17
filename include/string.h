@@ -117,6 +117,12 @@ static inline char* strcat(char* restrict dest, const char* restrict src) {
     return dest;
 }
 
+static inline char* strncat(char* restrict dest, const char* restrict src, size_t n) {
+    char* d = dest + strlen(dest);
+    strncpy(d, src, n);
+    return dest;
+}
+
 // Utility functions
 static inline bool equal(const char *a, const char *b) {
     return strcmp(a, b) == 0;

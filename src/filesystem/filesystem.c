@@ -162,7 +162,7 @@ bool filesystem_get_entry(filesystem_t *filesystem, const char *path, fat_file_e
         return false;
     }
     current_entry.parent_block = get_root_directory_start_block(mount);
-    
+
     char *segment = sstrtok((char *)relative_path, "/");
     char *next_segment = sstrtok(NULL, "/");
 
@@ -390,14 +390,150 @@ extern bool filesystem_get_entries(filesystem_t *filesystem, const char *path, f
     return true;
 }
 
+uint32_t filesystem_read_data(filesystem_t *filesystem, const char *path, void *buffer, uint32_t max_buffer)
+{
+    if (filesystem == NULL || path == NULL || buffer == NULL)
+        return 0;
+
+    DISABLE_INTERRUPTS();
+
+    int drive_num = 0;
+    const char *relative_path = path;
+
+    if (!(path[1] == ':' && path[2] == '/'))
+    {
+        ENABLE_INTERRUPTS();
+        return 0;
+    }
+
+    drive_num = path[0] - '0';
+    if (drive_num < 0 || drive_num >= filesystem->mount_count)
+    {
+        ENABLE_INTERRUPTS();
+        return 0;
+    }
+
+    if (filesystem_mount(filesystem, drive_num) == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return 0;
+    }
+
+    relative_path = path + 3;
+
+    filesystem_mount_t *mount = filesystem_mount(filesystem, drive_num);
+    if (mount == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return 0;
+    }
+
+    fat_file_entry_t current_entry;
+
+    if (fat16_read_entry(mount, mount->current_block, 0, &current_entry) < 0)
+    {
+        ENABLE_INTERRUPTS();
+        return 0;
+    }
+    current_entry.parent_block = get_root_directory_start_block(mount);
+
+    char *segment = sstrtok((char *)relative_path, "/");
+    char *next_segment = sstrtok(NULL, "/");
+
+    while (segment != NULL)
+    {
+        if (strcmp(segment, ".") == 0)
+        {
+            segment = next_segment;
+            next_segment = sstrtok(NULL, "/");
+            continue;
+        }
+
+        if (strcmp(segment, "..") == 0)
+        {
+            if (current_entry.parent_block != 0)
+            {
+                fat_file_entry_t parent_entry;
+                fat16_read_entry(mount, current_entry.parent_block, 0, &parent_entry);
+                current_entry = parent_entry;
+
+                mount->current_block = current_entry.entry.cluster_num_low == 0
+                                           ? get_root_directory_start_block(mount)
+                                           : get_data_cluster_lba(mount, current_entry.entry.cluster_num_low);
+            }
+
+            segment = next_segment;
+            next_segment = sstrtok(NULL, "/");
+            continue;
+        }
+
+        char name[9] = {0};
+        char ext[4] = {0};
+
+        char *dot = strchr(segment, '.');
+        if (dot != NULL && strlen(segment) > 2)
+        {
+            int namelen = dot - segment;
+            if (namelen > 8)
+                namelen = 8;
+            memcpy(name, segment, namelen);
+
+            int extlen = strlen(dot + 1);
+            if (extlen > 3)
+                extlen = 3;
+            memcpy(ext, dot + 1, extlen);
+        }
+        else
+        {
+            int namelen = strlen(segment);
+            if (namelen > 8)
+                namelen = 8;
+            memcpy(name, segment, namelen);
+
+            memset(ext, ' ', 3);
+        }
+
+        fat16_to_upper(name);
+        fat16_to_upper(ext);
+        fat16_to_upper(segment);
+
+        if (fat16_locate_entry(mount, name, ext, &current_entry) < 0)
+        {
+            ENABLE_INTERRUPTS();
+            return 0;
+        }
+
+        if ((current_entry.entry.attributes & FAT_DIRECTORY) && next_segment != NULL)
+        {
+            if (fat16_change_directory(mount, segment) < 0)
+            {
+                ENABLE_INTERRUPTS();
+                return 0;
+            }
+        }
+
+        segment = next_segment;
+        next_segment = sstrtok(NULL, "/");
+    }
+
+    uint32_t size = fat16_read_data(mount, &current_entry, buffer, max_buffer, 0);
+
+    // Reset just in case....
+    mount->current_block = get_root_directory_start_block(mount);
+
+    ENABLE_INTERRUPTS();
+    return size;
+}
+
 uint32_t fat16_read_data(filesystem_mount_t *mount, fat_file_entry_t *entry, void *buffer, uint32_t size, uint32_t offset)
 {
-    if (mount == NULL || mount->fat_table_ptr == NULL)
+    if (!mount || !mount->fat_table_ptr || !entry || !buffer)
         return 0;
 
-    if (buffer == NULL || offset >= entry->entry.file_size)
+    if (offset >= entry->entry.file_size)
         return 0;
 
+    // adjust size if it goes beyond the file
     if (offset + size > entry->entry.file_size)
         size = entry->entry.file_size - offset;
 
@@ -407,10 +543,11 @@ uint32_t fat16_read_data(filesystem_mount_t *mount, fat_file_entry_t *entry, voi
 
     uint16_t cluster = entry->entry.cluster_num_low;
 
+    // walk to the cluster containing the offset
     for (uint16_t i = 0; i < cluster_index; i++)
     {
         uint16_t next = ((uint16_t *)mount->fat_table_ptr)[cluster];
-        if (next >= 0xFFF8)
+        if (next >= 0xFFF8) // end-of-chain
             return 0;
         cluster = next;
     }
@@ -420,27 +557,43 @@ uint32_t fat16_read_data(filesystem_mount_t *mount, fat_file_entry_t *entry, voi
 
     while (bytes_remaining > 0)
     {
-        uint32_t lba = get_data_cluster_lba(mount, cluster);
+        uint32_t cluster_lba = get_data_cluster_lba(mount, cluster);
+        uint32_t cluster_bytes_remaining = cluster_size - in_cluster_offset;
 
-        uint32_t to_read = cluster_size - in_cluster_offset;
-        if (to_read > bytes_remaining)
-            to_read = bytes_remaining;
+        if (cluster_bytes_remaining > bytes_remaining)
+            cluster_bytes_remaining = bytes_remaining;
 
-        if (disk_manager_read_block_offset(mount->filesystem->disk_manager, mount->disk, buf_ptr, to_read, in_cluster_offset, lba) < 0)
-            return 0;
+        // read sector by sector
+        for (uint16_t sector = 0; sector < mount->boot_table.boot_record.sectors_per_cluster && cluster_bytes_remaining > 0; sector++)
+        {
+            uint8_t sector_buf[512];
+            if (disk_manager_read_block(mount->filesystem->disk_manager, mount->disk, sector_buf, cluster_lba + sector) < 0)
+                return size - bytes_remaining;
 
-        buf_ptr += to_read;
-        bytes_remaining -= to_read;
-        in_cluster_offset = 0;
+            uint32_t copy_start = (sector == 0) ? in_cluster_offset : 0;
+            uint32_t copy_len = 512 - copy_start;
+            if (copy_len > cluster_bytes_remaining)
+                copy_len = cluster_bytes_remaining;
 
+            memcpy(buf_ptr, sector_buf + copy_start, copy_len);
+
+            buf_ptr += copy_len;
+            bytes_remaining -= copy_len;
+            cluster_bytes_remaining -= copy_len;
+            in_cluster_offset = 0; // only the first sector uses an offset
+        }
+
+        // move to next cluster
         uint16_t next = ((uint16_t *)mount->fat_table_ptr)[cluster];
         if (next >= 0xFFF8)
             break;
+
         cluster = next;
     }
 
-    return size - bytes_remaining;
+    return size;
 }
+
 
 int fat16_change_directory(filesystem_mount_t *mount, const char *name)
 {

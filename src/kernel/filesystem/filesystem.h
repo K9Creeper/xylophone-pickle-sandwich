@@ -9,5 +9,5 @@
 extern void kernel_filesystem_init(void);
 extern file_info_t* kernel_filesystem_get_file(const char* path);
 extern file_info_t* kernel_filesystem_list_dir(const char* path, uint32_t *max_entries);
-
+extern uint32_t kernel_filesystem_read_file(file_info_t* file, void* buffer, uint32_t max_buffer);
 #endif

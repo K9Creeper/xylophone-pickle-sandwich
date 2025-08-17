@@ -13,5 +13,6 @@ extern bool filesystem_get_entry(filesystem_t* filesystem, const char* path, fat
 
 // @param max_entries: like this will return how much there actually is if the number passed first is higher than the output
 extern bool filesystem_get_entries(filesystem_t* filesystem, const char* path, fat_file_entry_t *out_entries, uint32_t* max_entries);
+extern uint32_t filesystem_read_data(filesystem_t* filesystem, const char* path, void* buffer, uint32_t max_buffer);
 
 #endif

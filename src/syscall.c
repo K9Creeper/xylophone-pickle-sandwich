@@ -53,6 +53,10 @@ void* open_file(const char* path){
     return (void*)_syscall(SYSCALL_OPEN, (uint32_t)path, 0, 0);
 }
 
+uint32_t read_file(void* file, void* buffer, uint32_t buffer_size){
+    return (uint32_t)_syscall(SYSCALL_READ, (uint32_t)file, (uint32_t)buffer, buffer_size);
+}
+
 void* list_dir(const char* path, uint32_t* max_size){
     return (void*)_syscall(SYSCALL_LIST_DIR, (uint32_t)path, (uint32_t)max_size, 0);
 }

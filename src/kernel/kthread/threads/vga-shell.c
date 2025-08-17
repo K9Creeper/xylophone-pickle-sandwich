@@ -27,7 +27,6 @@ static int change_directory(char *dir, size_t dir_size, const char *path)
 
     // There are no guards for drive selection...
     size_t drive_len = 2;
-    printf("%s\n", path);
 
     strncpy(temp, dir, sizeof(temp) - 1);
     temp[sizeof(temp) - 1] = '\0';
@@ -54,7 +53,6 @@ static int change_directory(char *dir, size_t dir_size, const char *path)
 
             if (len > drive_len + 1)
             {
-                printf("%s %d > %d\n", temp, len, drive_len + 1);
                 if (temp[len - 1] == '/' && len > drive_len + 1)
                     len--;
 
@@ -111,6 +109,51 @@ static int change_directory(char *dir, size_t dir_size, const char *path)
     return 0;
 }
 
+static int resolve_path(const char *cwd, const char *path, char *out, size_t out_size)
+{
+    if (!cwd || !path || !out || out_size == 0)
+        return -1;
+
+    char temp[512];
+
+    // Case 1: path already has drive ("0:/...")
+    if (path[1] == ':' && path[2] == '/')
+    {
+        strncpy(temp, path, sizeof(temp) - 1);
+        temp[sizeof(temp) - 1] = '\0';
+    }
+    // Case 2: absolute path without drive ("/...") → prepend current drive
+    else if (path[0] == '/')
+    {
+        strncpy(temp, cwd, 2); // copy "0:"
+        temp[2] = '\0';
+        strncat(temp, path, sizeof(temp) - strlen(temp) - 1);
+    }
+    // Case 3: relative path → append to cwd
+    else
+    {
+        strncpy(temp, cwd, sizeof(temp) - 1);
+        temp[sizeof(temp) - 1] = '\0';
+        if (temp[strlen(temp) - 1] != '/')
+            strncat(temp, "/", sizeof(temp) - strlen(temp) - 1);
+        strncat(temp, path, sizeof(temp) - strlen(temp) - 1);
+    }
+
+    // Normalize the path using your change_directory() logic
+    char normalized[512];
+    strncpy(normalized, temp, sizeof(normalized) - 1);
+    normalized[sizeof(normalized) - 1] = '\0';
+
+    if (change_directory(normalized, sizeof(normalized), "" /* no extra path */) < 0)
+        return -2;
+
+    // Copy final normalized result into out
+    strncpy(out, normalized, out_size - 1);
+    out[out_size - 1] = '\0';
+
+    return 0;
+}
+
 void kthread_vga_shell(void)
 {
     vga_terminal_clear();
@@ -162,7 +205,39 @@ void kthread_vga_shell(void)
             {
                 vga_terminal_write_string("cd: missing argument\n");
             }
-        }else if(strcmp(token, "cls") == 0){
+        }
+        else if (strcmp(token, "cat") == 0)
+        {
+            char *path = strtok(NULL, " ", token);
+            if (path)
+            {
+                char abs_path[512];
+                if (resolve_path(dir, path, abs_path, sizeof(abs_path)) == 0)
+                {
+                    file_info_t *FILE = open_file(abs_path);
+                    if (FILE != NULL)
+                    {
+                        void *buffer = malloc(FILE->size + 1);
+                        if (buffer != NULL)
+                        {
+                            uint32_t bytes_read = read_file(FILE, buffer, FILE->size);
+                            for (uint32_t i = 0; i < bytes_read; i++)
+                                printf("%d ", ((uint8_t*)buffer)[i]);
+
+                            printf("\n");
+                            free(buffer);
+                        }
+                        free(FILE);
+                    }
+                }
+                else
+                {
+                    vga_terminal_write_string("Invalid path: %s\n", path);
+                }
+            }
+        }
+        else if (strcmp(token, "cls") == 0)
+        {
             vga_terminal_clear();
         }
         else

@@ -38,7 +38,7 @@ extern void vga_terminal_init(uint32_t buffer_address, vga_terminal_color_enum_t
 extern void vga_terminal_show_cursor(bool show);
 extern void vga_terminal_destroy(void);
 extern void vga_terminal_clear(void);
+extern void vga_terminal_putc(char c);
 extern void vga_terminal_write(const char* data, uint32_t size);
 extern void vga_terminal_write_string(const char *format, ...);
-
 #endif

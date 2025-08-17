@@ -34,6 +34,7 @@ typedef struct filesystem_s
 typedef struct file_info_s
 {
     char name[256];
+    char path[512];
     uint8_t attributes;
     uint32_t size;
 

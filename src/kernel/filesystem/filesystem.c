@@ -14,6 +14,8 @@ extern kernel_context_t *kernel_context;
 #include <scheduling/task.h>
 #include <syscall.h>
 
+#include <stdio.h>
+
 void kernel_filesystem_init(void)
 {
     filesystem_init(&kernel_context->filesystem, &kernel_context->disk_manager);
@@ -102,6 +104,8 @@ empty_path:
     memcpy(file_info->name, temp, sizeof(file_info->name));
     file_info->name[sizeof(file_info->name) - 1] = '\0';
 
+    memcpy(file_info->path, relative_path, sizeof(file_info->path));
+    
     file_info->attributes = entry.entry.attributes;
     file_info->created = 0;
     file_info->modified = 0;
@@ -110,8 +114,6 @@ empty_path:
 
     return file_info;
 }
-
-#include <stdio.h>
 
 file_info_t *kernel_filesystem_list_dir(const char *path, uint32_t *max_entries)
 {
@@ -210,4 +212,10 @@ empty_path:
     }
 
     return file_infos;
+}
+
+uint32_t kernel_filesystem_read_file(file_info_t* file, void* buffer, uint32_t max_buffer){
+    if(file == NULL || buffer == NULL || max_buffer == 0) return 0;
+    
+    return filesystem_read_data(&kernel_context->filesystem, file->path, buffer, max_buffer);
 }

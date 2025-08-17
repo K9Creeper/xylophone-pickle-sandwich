@@ -330,8 +330,9 @@ void setup_scheduling(void)
     syscalls_register(SYSCALL_FREE, (void *)syscall_free);
     
     syscalls_register(SYSCALL_OPEN, (void*)kernel_filesystem_get_file);
+    syscalls_register(SYSCALL_READ, (void*)kernel_filesystem_read_file);
     syscalls_register(SYSCALL_LIST_DIR, (void*)kernel_filesystem_list_dir);
-    
+
     syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void *)pit_get_tick);
 
     syscalls_register(SYSCALL_GET_TASK_DIRECTORY, (void*)syscall_get_task_directory);
