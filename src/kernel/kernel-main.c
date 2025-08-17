@@ -309,8 +309,7 @@ void kthread_idle(void)
 
 void kthread_aids(void)
 {
-    for (int i = 0; i < 10; i++)
-        ;
+    for (int i = 0; i < 10; i++);
 
     scheduling_exit();
 }
@@ -329,6 +328,9 @@ void setup_scheduling(void)
 
     syscalls_register(SYSCALL_MALLOC, (void *)syscall_malloc);
     syscalls_register(SYSCALL_FREE, (void *)syscall_free);
+    
+    syscalls_register(SYSCALL_OPEN, (void*)kernel_filesystem_get_file);
+    syscalls_register(SYSCALL_LIST_DIR, (void*)kernel_filesystem_list_dir);
     
     syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void *)pit_get_tick);
 

@@ -48,3 +48,11 @@ uint32_t get_system_tick_count(void){
 void get_task_directory(char* buffer, uint32_t buffer_size){
     _syscall(SYSCALL_GET_TASK_DIRECTORY, (uint32_t)buffer, buffer_size, 0);
 }
+
+void* open_file(const char* path){
+    return (void*)_syscall(SYSCALL_OPEN, (uint32_t)path, 0, 0);
+}
+
+void* list_dir(const char* path, uint32_t* max_size){
+    return (void*)_syscall(SYSCALL_LIST_DIR, (uint32_t)path, (uint32_t)max_size, 0);
+}

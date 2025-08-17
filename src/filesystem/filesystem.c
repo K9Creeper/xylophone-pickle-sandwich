@@ -7,16 +7,13 @@
 #include <kernel/stdlib.h>
 #include <kernel/util.h>
 
-#include <scheduling/task.h>
-
 #include <stddef.h>
 
 #include <memory.h>
 #include <string.h>
 #include <math.h>
 
-#include <syscall.h>
-
+#include <data-structures/scheduling/task.h>
 #include <stdio.h>
 
 static inline uint32_t get_fat_start_block(filesystem_mount_t *mount)
@@ -46,12 +43,12 @@ static void fat16_to_upper(char *str);
 
 static int fat16_load(filesystem_mount_t *mount);
 
-static int fat16_read_entry(filesystem_mount_t *mount, uint32_t block, uint32_t index, fat_entry_t *out);
-static int fat16_list_entries(filesystem_mount_t *mount, fat_entry_t *out_entries, uint32_t max_entries);
-static int fat16_locate_entry(filesystem_mount_t *mount, const char *name, const char *ext, fat_entry_t *out);
+static int fat16_read_entry(filesystem_mount_t *mount, uint32_t block, uint32_t index, fat_file_entry_t *out);
+static int fat16_list_entries(filesystem_mount_t *mount, fat_file_entry_t *out_entries, uint32_t *max_entries);
+static int fat16_locate_entry(filesystem_mount_t *mount, const char *name, const char *ext, fat_file_entry_t *out);
 static int fat16_change_directory(filesystem_mount_t *mount, const char *name);
 
-static uint32_t fat16_read_data(filesystem_mount_t *mount, fat_entry_t *entry, void *buffer, uint32_t size, uint32_t offset);
+static uint32_t fat16_read_data(filesystem_mount_t *mount, fat_file_entry_t *entry, void *buffer, uint32_t size, uint32_t offset);
 
 void filesystem_init(filesystem_t *filesystem, disk_manager_t *disk_manager)
 {
@@ -119,91 +116,88 @@ filesystem_mount_t *filesystem_mount(filesystem_t *filesystem, int drive_num)
     return mount;
 }
 
-bool filesystem_get_entry(filesystem_t *filesystem, const char *path, fat_entry_t *out)
+bool filesystem_get_entry(filesystem_t *filesystem, const char *path, fat_file_entry_t *out)
 {
-    if (!filesystem || !path || !out)
+    if (filesystem == NULL || path == NULL || out == NULL)
         return false;
 
     DISABLE_INTERRUPTS();
 
     int drive_num = 0;
     const char *relative_path = path;
-    static char full_path[TASK_MAX_FILESYSTEM_PATH_LENGTH];
 
-    if (path[1] == ':' && path[2] == '/')
-    {
-        drive_num = path[0] - '0';
-        if (drive_num < 0 || drive_num >= filesystem->mount_count)
-        {
-            ENABLE_INTERRUPTS();
-            return false;
-        }
-
-        if (filesystem_mount(filesystem, drive_num) == NULL)
-        {
-            ENABLE_INTERRUPTS();
-            return false;
-        }
-
-        relative_path = path + 3;
-    }
-    else
-    {
-        char current_task_path[512];
-        get_task_directory(current_task_path, sizeof(current_task_path));
-
-        int len = 0;
-        while (current_task_path[len] != '\0' && len < TASK_MAX_FILESYSTEM_PATH_LENGTH - 1)
-        {
-            full_path[len] = current_task_path[len];
-            len++;
-        }
-
-        if (len > 0 && full_path[len - 1] != '/' && len < TASK_MAX_FILESYSTEM_PATH_LENGTH - 1)
-        {
-            full_path[len++] = '/';
-        }
-
-        int i = 0;
-        while (path[i] != '\0' && len < TASK_MAX_FILESYSTEM_PATH_LENGTH - 1)
-        {
-            full_path[len++] = path[i++];
-        }
-
-        full_path[len] = '\0';
-        relative_path = full_path;
-    }
-
-    filesystem_mount_t *mount = filesystem_mount(filesystem, drive_num);
-    if (!mount)
+    if (!(path[1] == ':' && path[2] == '/'))
     {
         ENABLE_INTERRUPTS();
         return false;
     }
 
-    if (relative_path[1] == ':' && relative_path[2] == '/')
+    drive_num = path[0] - '0';
+    if (drive_num < 0 || drive_num >= filesystem->mount_count)
     {
-        relative_path += 3;
+        ENABLE_INTERRUPTS();
+        return false;
     }
 
-    fat_entry_t current_entry;
+    if (filesystem_mount(filesystem, drive_num) == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return false;
+    }
+
+    relative_path = path + 3;
+
+    filesystem_mount_t *mount = filesystem_mount(filesystem, drive_num);
+    if (mount == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return false;
+    }
+
+    fat_file_entry_t current_entry;
 
     if (fat16_read_entry(mount, mount->current_block, 0, &current_entry) < 0)
     {
         ENABLE_INTERRUPTS();
         return false;
     }
+    current_entry.parent_block = get_root_directory_start_block(mount);
 
     char *segment = sstrtok((char *)relative_path, "/");
     char *next_segment = sstrtok(NULL, "/");
 
     while (segment != NULL)
     {
+        if (strcmp(segment, ".") == 0)
+        {
+            segment = next_segment;
+            next_segment = sstrtok(NULL, "/");
+            continue;
+        }
+
+        if (strcmp(segment, "..") == 0)
+        {
+            if (current_entry.parent_block != 0)
+            {
+                fat_file_entry_t parent_entry;
+                fat16_read_entry(mount, current_entry.parent_block, 0, &parent_entry);
+                current_entry = parent_entry;
+
+                mount->current_block = current_entry.entry.cluster_num_low == 0
+                                           ? get_root_directory_start_block(mount)
+                                           : get_data_cluster_lba(mount, current_entry.entry.cluster_num_low);
+            }
+
+            segment = next_segment;
+            next_segment = sstrtok(NULL, "/");
+            continue;
+        }
+
         char name[9] = {0};
         char ext[4] = {0};
 
         char *dot = strchr(segment, '.');
-        if (dot != NULL)
+        if (dot != NULL && strlen(segment) > 2)
         {
             int namelen = dot - segment;
             if (namelen > 8)
@@ -235,7 +229,7 @@ bool filesystem_get_entry(filesystem_t *filesystem, const char *path, fat_entry_
             return false;
         }
 
-        if ((current_entry.attributes & FAT_DIRECTORY) && next_segment != NULL)
+        if ((current_entry.entry.attributes & FAT_DIRECTORY) && next_segment != NULL)
         {
             if (fat16_change_directory(mount, segment) < 0)
             {
@@ -249,90 +243,91 @@ bool filesystem_get_entry(filesystem_t *filesystem, const char *path, fat_entry_
     }
 
     *out = current_entry;
+
+    // Reset just in case....
+    mount->current_block = get_root_directory_start_block(mount);
+
     ENABLE_INTERRUPTS();
     return true;
 }
 
-extern bool filesystem_get_entries(filesystem_t *filesystem, const char *path, fat_entry_t *out_entries, uint32_t max_entries)
+extern bool filesystem_get_entries(filesystem_t *filesystem, const char *path, fat_file_entry_t *out_entries, uint32_t *max_entries)
 {
-    if (!filesystem || !path || !out_entries)
+    if (filesystem == NULL || path == NULL || out_entries == NULL || max_entries == NULL)
         return false;
 
     DISABLE_INTERRUPTS();
 
     int drive_num = 0;
     const char *relative_path = path;
-    static char full_path[TASK_MAX_FILESYSTEM_PATH_LENGTH];
 
-    if (path[1] == ':' && path[2] == '/')
-    {
-        drive_num = path[0] - '0';
-        if (drive_num < 0 || drive_num >= filesystem->mount_count)
-        {
-            ENABLE_INTERRUPTS();
-            return false;
-        }
-
-        if (filesystem_mount(filesystem, drive_num) == NULL)
-        {
-            ENABLE_INTERRUPTS();
-            return false;
-        }
-
-        relative_path = path + 3;
-    }
-    else
-    {
-        char current_task_path[512];
-        get_task_directory(current_task_path, sizeof(current_task_path));
-
-        int len = 0;
-        while (current_task_path[len] != '\0' && len < TASK_MAX_FILESYSTEM_PATH_LENGTH - 1)
-        {
-            full_path[len] = current_task_path[len];
-            len++;
-        }
-
-        if (len > 0 && full_path[len - 1] != '/' && len < TASK_MAX_FILESYSTEM_PATH_LENGTH - 1)
-        {
-            full_path[len++] = '/';
-        }
-
-        int i = 0;
-        while (path[i] != '\0' && len < TASK_MAX_FILESYSTEM_PATH_LENGTH - 1)
-        {
-            full_path[len++] = path[i++];
-        }
-
-        full_path[len] = '\0';
-        relative_path = full_path;
-    }
-
-    filesystem_mount_t *mount = filesystem_mount(filesystem, drive_num);
-    if (!mount)
+    if (!(path[1] == ':' && path[2] == '/'))
     {
         ENABLE_INTERRUPTS();
         return false;
     }
 
-    if (relative_path[1] == ':' && relative_path[2] == '/')
+    drive_num = path[0] - '0';
+    if (drive_num < 0 || drive_num >= filesystem->mount_count)
     {
-        relative_path += 3;
+        ENABLE_INTERRUPTS();
+        return false;
     }
 
-    fat_entry_t current_entry;
+    if (filesystem_mount(filesystem, drive_num) == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return false;
+    }
+
+    relative_path = path + 3;
+
+    filesystem_mount_t *mount = filesystem_mount(filesystem, drive_num);
+    if (mount == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return false;
+    }
+
+    fat_file_entry_t current_entry;
 
     if (fat16_read_entry(mount, mount->current_block, 0, &current_entry) < 0)
     {
         ENABLE_INTERRUPTS();
         return false;
     }
+    current_entry.parent_block = get_root_directory_start_block(mount);
 
     char *segment = sstrtok((char *)relative_path, "/");
     char *next_segment = sstrtok(NULL, "/");
 
     while (segment != NULL)
     {
+        if (strcmp(segment, ".") == 0)
+        {
+            segment = next_segment;
+            next_segment = sstrtok(NULL, "/");
+            continue;
+        }
+
+        if (strcmp(segment, "..") == 0)
+        {
+            if (current_entry.parent_block != 0)
+            {
+                fat_file_entry_t parent_entry;
+                fat16_read_entry(mount, current_entry.parent_block, 0, &parent_entry);
+                current_entry = parent_entry;
+
+                mount->current_block = current_entry.entry.cluster_num_low == 0
+                                           ? get_root_directory_start_block(mount)
+                                           : get_data_cluster_lba(mount, current_entry.entry.cluster_num_low);
+            }
+
+            segment = next_segment;
+            next_segment = sstrtok(NULL, "/");
+            continue;
+        }
+
         char name[9] = {0};
         char ext[4] = {0};
 
@@ -369,7 +364,7 @@ extern bool filesystem_get_entries(filesystem_t *filesystem, const char *path, f
             return false;
         }
 
-        if ((current_entry.attributes & FAT_DIRECTORY))
+        if ((current_entry.entry.attributes & FAT_DIRECTORY))
         {
             if (fat16_change_directory(mount, segment) < 0)
             {
@@ -388,26 +383,29 @@ extern bool filesystem_get_entries(filesystem_t *filesystem, const char *path, f
         return false;
     }
 
+    // Reset just in case....
+    mount->current_block = get_root_directory_start_block(mount);
+
     ENABLE_INTERRUPTS();
     return true;
 }
 
-uint32_t fat16_read_data(filesystem_mount_t *mount, fat_entry_t *entry, void *buffer, uint32_t size, uint32_t offset)
+uint32_t fat16_read_data(filesystem_mount_t *mount, fat_file_entry_t *entry, void *buffer, uint32_t size, uint32_t offset)
 {
     if (mount == NULL || mount->fat_table_ptr == NULL)
         return 0;
 
-    if (buffer == NULL || offset >= entry->file_size)
+    if (buffer == NULL || offset >= entry->entry.file_size)
         return 0;
 
-    if (offset + size > entry->file_size)
-        size = entry->file_size - offset;
+    if (offset + size > entry->entry.file_size)
+        size = entry->entry.file_size - offset;
 
     uint16_t cluster_size = mount->boot_table.boot_record.sectors_per_cluster * 512;
     uint16_t cluster_index = offset / cluster_size;
     uint16_t in_cluster_offset = offset % cluster_size;
 
-    uint16_t cluster = entry->cluster_num_low;
+    uint16_t cluster = entry->entry.cluster_num_low;
 
     for (uint16_t i = 0; i < cluster_index; i++)
     {
@@ -449,58 +447,64 @@ int fat16_change_directory(filesystem_mount_t *mount, const char *name)
     if (!mount)
         return -1;
 
-    fat_entry_t entry;
+    fat_file_entry_t entry;
     int find_result = fat16_locate_entry(mount, name, "   ", &entry);
-    if (find_result < 0 || !(entry.attributes & FAT_DIRECTORY))
+    if (find_result < 0 || !(entry.entry.attributes & FAT_DIRECTORY))
         return -2;
 
-    mount->current_block = get_data_start_block(mount) + (entry.cluster_num_low - 2) * mount->boot_table.boot_record.sectors_per_cluster;
+    mount->current_cluster = entry.entry.cluster_num_low;
+    mount->current_block = get_data_start_block(mount) + (mount->current_cluster - 2) * mount->boot_table.boot_record.sectors_per_cluster;
     return 0;
 }
 
-int fat16_list_entries(filesystem_mount_t *mount, fat_entry_t *out_entries, uint32_t max_entries)
+int fat16_list_entries(filesystem_mount_t *mount, fat_file_entry_t *out_entries, uint32_t *max_entries)
 {
-    if (mount->filesystem == NULL || mount->filesystem->disk_manager == NULL)
+    if (mount->filesystem == NULL || mount->filesystem->disk_manager == NULL || max_entries == NULL)
         return -1;
 
-    for (int i = 0; i < imin(mount->boot_table.boot_record.root_dir_entries, max_entries); i++)
+    int count = 0;
+    for (int i = 0; i < imin(mount->boot_table.boot_record.root_dir_entries, *max_entries); i++)
     {
-        fat_entry_t entry = {0};
+        fat_file_entry_t entry = {0};
 
         fat16_read_entry(mount, mount->current_block, i, &entry);
+        entry.parent_block = mount->current_block;
 
-        if ((entry.attributes & FAT_LFN) == FAT_LFN)
+        if ((entry.entry.attributes & FAT_LFN) == FAT_LFN)
             continue;
-        if (entry.filename[0] == 0x00)
+        if (entry.entry.filename[0] == 0x00)
             continue;
-        if ((uint8_t)entry.filename[0] == 0xE5)
+        if ((uint8_t)entry.entry.filename[0] == 0xE5)
             continue;
 
-        out_entries[i] = entry;
+        out_entries[count++] = entry;
     }
+
+    *max_entries = count;
 
     return 0;
 }
 
-int fat16_locate_entry(filesystem_mount_t *mount, const char *name, const char *ext, fat_entry_t *out)
+int fat16_locate_entry(filesystem_mount_t *mount, const char *name, const char *ext, fat_file_entry_t *out)
 {
     if (mount->filesystem == NULL || mount->filesystem->disk_manager == NULL)
         return -1;
 
     for (int i = 0; i < mount->boot_table.boot_record.root_dir_entries; i++)
     {
-        fat_entry_t entry = {0};
+        fat_file_entry_t entry = {0};
 
         fat16_read_entry(mount, mount->current_block, i, &entry);
+        entry.parent_block = mount->current_block;
 
-        if ((entry.attributes & FAT_LFN) == FAT_LFN)
+        if ((entry.entry.attributes & FAT_LFN) == FAT_LFN)
             continue;
-        if (entry.filename[0] == 0x00)
+        if (entry.entry.filename[0] == 0x00)
             continue;
-        if ((uint8_t)entry.filename[0] == 0xE5)
+        if ((uint8_t)entry.entry.filename[0] == 0xE5)
             continue;
 
-        if (memcmp(entry.name, name, strlen(name)) == 0 && memcmp(entry.extension, ext, 3) == 0)
+        if (memcmp(entry.entry.name, name, strlen(name)) == 0 && memcmp(entry.entry.extension, ext, 3) == 0)
         {
             if (out)
             {
@@ -513,7 +517,7 @@ int fat16_locate_entry(filesystem_mount_t *mount, const char *name, const char *
     return -1;
 }
 
-int fat16_read_entry(filesystem_mount_t *mount, uint32_t block, uint32_t index, fat_entry_t *out)
+int fat16_read_entry(filesystem_mount_t *mount, uint32_t block, uint32_t index, fat_file_entry_t *out)
 {
     if (mount->filesystem == NULL || mount->filesystem->disk_manager == NULL)
         return -1;
@@ -524,7 +528,7 @@ int fat16_read_entry(filesystem_mount_t *mount, uint32_t block, uint32_t index, 
     if (block == get_root_directory_start_block(mount) && index == 0)
     {
         if (out != NULL)
-            memcpy((uint8_t *)out, (uint8_t *)(&mount->root_entry), sizeof(fat_entry_t));
+            memcpy((uint8_t *)(&out->entry), (uint8_t *)(&mount->root_entry), sizeof(fat_entry_t));
         return 0;
     }
 
@@ -537,7 +541,7 @@ int fat16_read_entry(filesystem_mount_t *mount, uint32_t block, uint32_t index, 
     fat_entry_t *dir_entry = (fat_entry_t *)((uint32_t)buffer + (index * sizeof(fat_entry_t)));
 
     if (out != NULL)
-        memcpy((uint8_t *)out, (uint8_t *)dir_entry, sizeof(fat_entry_t));
+        memcpy((uint8_t *)(&out->entry), (uint8_t *)dir_entry, sizeof(fat_entry_t));
 
     return 0;
 }
@@ -604,13 +608,13 @@ static void fat16_to_upper(char *str)
 
 static char *sstrtok(char *str, const char *delim)
 {
-    static char local_buffer[128] = {0};
+    static char local_buffer[TASK_MAX_NAME_LENGTH] = {0};
     static char *current = NULL;
 
     if (str != NULL)
     {
         int len = strlen(str);
-        memset(local_buffer, 0, 128);
+        memset(local_buffer, 0, TASK_MAX_NAME_LENGTH);
         memcpy(local_buffer, str, len);
         local_buffer[len + 1] = 0;
         current = local_buffer;

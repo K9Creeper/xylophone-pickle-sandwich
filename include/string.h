@@ -61,6 +61,17 @@ static inline char *strchr(const char *s, char c) {
     return (c == '\0') ? (char *)s : NULL;
 }
 
+static inline char *strrchr(const char *s, int c)
+{
+    const char *last = NULL;
+    while (*s) {
+        if (*s == (char)c)
+            last = s;
+        s++;
+    }
+    return (c == 0 ? (char*) s : (char *)last); 
+}
+
 static inline char *strtok(char *str, const char *delim, char *out) {
     static char *saveptr = 0;
     if (str) saveptr = str;

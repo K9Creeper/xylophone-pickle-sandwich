@@ -20,4 +20,7 @@ uint32_t get_system_tick_count(void);
 
 void get_task_directory(char* buffer, uint32_t buffer_size);
 
+void* open_file(const char* path);
+void* list_dir(const char* path, uint32_t* max_size);
+
 #endif
