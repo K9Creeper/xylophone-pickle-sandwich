@@ -26,9 +26,9 @@ bool terminal_add_key(char c)
             {
                 input_pos--;
                 input_buffer[input_pos] = '\0';
-            }
-            return true;
-
+                return true;
+            }else
+                return false;
         default:
             if (input_pos < TERMINAL_INPUT_BUFFER_SIZE - 1)
             {
@@ -37,6 +37,7 @@ bool terminal_add_key(char c)
             }
             return true;
     }
+    return true;
 }
 
 bool terminal_get_input(char *dest, size_t dest_size)

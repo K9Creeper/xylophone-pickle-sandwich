@@ -33,12 +33,19 @@ file_info_t *kernel_filesystem_get_file(const char *path)
     const char *relative_path = path;
     static char full_path[TASK_MAX_FILESYSTEM_PATH_LENGTH];
 
-    if (path[1] == ':' && path[2] == '/')
+    if (path[1] == ':' && path[2] == '/' && (strlen(relative_path) <= 3 && relative_path[3] == '\0'))
     {
         relative_path = path + 3;
+
+        if(relative_path[0] == '\0')
+        {
+            path = relative_path;
+            goto empty_path;
+        }
     }
-    else
+    else if(!(path[1] == ':' && path[2] == '/'))
     {
+empty_path:
         char current_task_path[512];
         get_task_directory(current_task_path, sizeof(current_task_path));
 
@@ -114,7 +121,7 @@ file_info_t *kernel_filesystem_list_dir(const char *path, uint32_t *max_entries)
     const char *relative_path = path;
     static char full_path[TASK_MAX_FILESYSTEM_PATH_LENGTH];
 
-    if (path[1] == ':' && path[2] == '/')
+    if (path[1] == ':' && path[2] == '/' && (strlen(relative_path) <= 3 && relative_path[3] == '\0'))
     {
         relative_path = path + 3;
 
@@ -124,7 +131,7 @@ file_info_t *kernel_filesystem_list_dir(const char *path, uint32_t *max_entries)
             goto empty_path;
         }
     }
-    else
+    else if(!(path[1] == ':' && path[2] == '/'))
     {
 empty_path:
         char current_task_path[512];

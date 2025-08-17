@@ -162,7 +162,7 @@ bool filesystem_get_entry(filesystem_t *filesystem, const char *path, fat_file_e
         return false;
     }
     current_entry.parent_block = get_root_directory_start_block(mount);
-
+    
     char *segment = sstrtok((char *)relative_path, "/");
     char *next_segment = sstrtok(NULL, "/");
 
