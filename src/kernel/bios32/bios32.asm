@@ -24,7 +24,7 @@ extern new_idt_ptr;
 extern new_reg_ptr;
 extern new_intnum_ptr;
 
-%define REBASE(x)                              (((x) - _bios32_helper) + 0x7c00)
+%define REBASE(x)                              (((x) - _bios32_helper) + 0x3C00)
 %define GDTENTRY(x)                            ((x) << 3)
 %define CODE32                                 GDTENTRY(1)  ; 0x08
 %define DATA32                                 GDTENTRY(2)  ; 0x10
@@ -82,7 +82,7 @@ real_mode_16:use16
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    mov sp, 0x8c00
+    mov sp, 0x4C00
 
     sti
 
@@ -112,7 +112,7 @@ real_mode_16:use16
     popa
 
     ; set a new stack for bios interrupt
-    mov sp, 0x9c00
+    mov sp, 0x5C00
     ; opcode for int
     db 0xCD
 _intnum_ptr:

@@ -30,11 +30,11 @@ extern void *_in_reg_ptr;
 extern volatile void *_out_reg_ptr;
 extern volatile void *_intnum_ptr;
 
-#define REBASE_ADDRESS 0x7C00
+#define REBASE_ADDRESS 0x3C00
 #define REBASE(sym) \
     ((void *)((uint32_t)(REBASE_ADDRESS) + ((uint32_t)(sym) - (uint32_t)_bios32_helper)))
 
-#define CPU_SYNC_DELAY() do { for (volatile uint8_t i = 0; i < 20; i++) asm volatile("hlt"); } while(0)
+#define CPU_SYNC_DELAY() do { for (volatile uint8_t i = 0; i < 50; i++) asm volatile("hlt"); } while(0)
 
 void (*rebased_bios32_helper)(void) = (void *)REBASE_ADDRESS;
 
@@ -55,10 +55,11 @@ void bios32_init(void)
     real_gdt_ptr.base = (uint32_t)pGDT;
     real_gdt_ptr.limit = sizeof(pGDT) - 1;
 
-    real_idt_ptr.base = 0;
+    real_idt_ptr.base = 0x0;
     real_idt_ptr.limit = 0x3ff;
 
     size = (uint32_t)(_bios32_helper_end) - (uint32_t)(_bios32_helper);
+    printf("Size %d\n", size);
 }
 
 static inline void io_wait(void)
@@ -101,7 +102,8 @@ void bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t 
     kernel_interrupt_descriptor_table_install();
 
     kernel_interrupt_request_remap();
-
+    io_wait();
+    
     ENABLE_INTERRUPTS();
 
     /*
