@@ -7,7 +7,12 @@ virt = offset + phys;
 SECTIONS
 {
     . = virt;
-    linkerld_startofkernel = .;
+    __start_of_kernel_space = offset;
+    __start_of_kernel = .;
+
+    __kernel_heap_start = 0xC0400000;
+    __kernel_heap_initial_end = 0xC0500000;
+    __kernel_heap_max_end = 0xCFFFFF00;
 
     .text ALIGN(4K) : AT(ADDR(.text) - offset)
     {
@@ -31,5 +36,19 @@ SECTIONS
         *(.data)
     }
     
-    linkerld_endofkernel = .;
+    .syscalls ALIGN(4) : AT(ADDR(.syscalls) - offset)
+    {
+        __start_syscalls = .;
+        KEEP(*(.syscalls))
+        __stop_syscalls = .;
+    }
+
+    .kthread ALIGN(4) : AT(ADDR(.kthread) - offset)
+    {
+        __start_kthread = .;
+        KEEP(*(.kthread))
+        __stop_kthread = .;
+    }
+
+    __end_of_kernel = .;
 }

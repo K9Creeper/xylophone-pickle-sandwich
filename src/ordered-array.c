@@ -1,6 +1,5 @@
-/// ---------------
-/// ordered-array.c
-/// @brief This file defines core functions of the ordered_array structure.
+/// ---------------------
+/// @file ordered-array.c
 
 #include <ordered-array.h>
 
@@ -26,9 +25,9 @@ void ordered_array_place(ordered_array_t* oa, void* address) {
     oa->size = 0;
 }
 
-bool ordered_array_insert(ordered_array_t* oa, type_t item) {
+uint8_t ordered_array_insert(ordered_array_t* oa, type_t item) {
     if (!oa || !oa->is_less_than_handle || oa->size >= oa->max_size)
-        return false;
+        return 0;
 
     uint32_t left = 0, right = oa->size;
     while (left < right) {
@@ -45,7 +44,7 @@ bool ordered_array_insert(ordered_array_t* oa, type_t item) {
 
     oa->array[left] = item;
     oa->size++;
-    return true;
+    return 1;
 }
 
 void ordered_array_remove(ordered_array_t* oa, uint32_t index) {
@@ -55,19 +54,4 @@ void ordered_array_remove(ordered_array_t* oa, uint32_t index) {
         oa->array[i] = oa->array[i + 1];
     }
     oa->size--;
-}
-
-uint32_t ordered_array_size(ordered_array_t* oa) {
-    return oa ? oa->size : (uint32_t)-1;
-}
-
-void ordered_array_clear(ordered_array_t* oa){
-    if (!oa || !oa->array) return;
-    memset((uint8_t*)oa->array, 0, oa->max_size * sizeof(type_t));
-    oa->size = 0;
-}
-
-type_t ordered_array_get(ordered_array_t* oa, uint32_t index) {
-    if (!oa || index >= oa->size) return NULL;
-    return oa->array[index];
 }

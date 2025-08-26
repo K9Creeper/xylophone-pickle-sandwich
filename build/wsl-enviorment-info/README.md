@@ -59,3 +59,9 @@ Run: ```sudo apt-get install xorriso```.
 Run: ```sudo apt-get install grub2-common```.
 
 Run: ```sudo apt-get install grub-pc-bin```.
+
+<h3> Qemu </h3>
+
+Run: ```sudo apt-get install qemu-system-i386```
+
+Run: ```sudo apt-get install qemu-utils```

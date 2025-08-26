@@ -40,6 +40,10 @@ void outportl(uint16_t port, uint32_t data) {
     __asm__ volatile ("outl %1, %0" :: "dN"(port), "a"(data));
 }
 
+static inline void io_wait(void) {
+    outportb(0x80, 0);
+}
+
 /* Swap two ints */
 static inline void swap(int *p1, int *p2) {
     int tmp = *p1;

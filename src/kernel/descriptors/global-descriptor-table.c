@@ -1,15 +1,12 @@
-/// -------------------------
-/// global-descriptor-table.c
-/// @brief This file defines the functions for setting up the Global Descriptor Table within the kernel.
+/// -------------------------------
+/// @file global-descriptor-table.c
 
 #include "global-descriptor-table.h"
 
 #include <stdint.h>
 #include <memory.h>
 
-#include <data-structures/kernel-descriptors/global-descriptor-table.h>
-
-#include <stdio.h>
+#include <kernel/data-structures/descriptors/global-descriptor-table.h>
 
 #define GDT_GRANULARITY 0xCF
 
@@ -31,11 +28,12 @@ void kernel_global_descriptor_table_init(void)
 {
     _pGDT.limit = (sizeof(global_descriptor_table_entry_t) * KERNEL_DESCRIPTORS_GDT_ENTRYCOUT) - 1;
     _pGDT.base = (uint32_t)(&pGDT);
-    // memset((unsigned char *)(&pGDT), 0, sizeof(global_descriptor_table_entry_t) * KERNEL_DESCRIPTORS_GDT_ENTRYCOUT);
+    memset((unsigned char *)(pGDT), 0, sizeof(global_descriptor_table_entry_t) * KERNEL_DESCRIPTORS_GDT_ENTRYCOUT);
 }
 
 void kernel_global_descriptor_table_install(void)
 {
+    // Null
     kernel_global_descriptor_set_gate(0, 0, 0, 0, 0);
 
     // kernel (32-bit)
@@ -45,6 +43,8 @@ void kernel_global_descriptor_table_install(void)
     // User mode (32-bit)
     kernel_global_descriptor_set_gate(3, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_PL3, GDT_GRANULARITY);
     kernel_global_descriptor_set_gate(4, 0, 0xFFFFFFFF, GDT_ACCESS_DATA_PL3, GDT_GRANULARITY);
+
+    // Reserve index [5] for Task State Segment
 
     // Real mode (16-bit)
     kernel_global_descriptor_set_gate(6, 0, 0xFFFFFFFF, GDT_ACCESS_CODE_PL0, 0x0F);

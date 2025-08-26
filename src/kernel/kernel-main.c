@@ -1,221 +1,32 @@
-/// -------------
-/// kernel-main.c
-/// @brief This is the C entry of the kernel.
-
-#define get_esp(esp) __asm__ volatile("mov %%esp, %0" : "=r"(esp))
+/// -------------------
+/// @file kernel-main.c
 
 #include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <kernel/stdlib.h>
-#include <memory.h>
-#include <multiboot2.h>
 
-#include "drivers/vga-terminal/vga-terminal.h"
-#include <data-structures/kernel/kernel-context.h>
 #include <kernel/util.h>
-
-#include "../terminal/terminal.h"
-
 int system_interrupt_disable_counter = 0;
 
-kernel_context_t *kernel_context = &(kernel_context_t){
-    .physical_memory_size = 0x1000000 * 8U,
-    .video_state = {
-        true,
-        VGA_TERMINAL_WIDTH,
-        VGA_TERMINAL_HEIGHT,
-        0, 0,
-        DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS}};
+#include <dbgprintf.h>
+#include "debug/serial-com1.h"
 
-// Setup function declarations
-static void setup_misc(void);
-static void setup_early_heap(void);
-static void setup_paging(void);
-static void setup_heap(void);
-static void setup_gdt(void);
-static void setup_idt(void);
-static void setup_fault_handlers(void);
-static int setup_vesa(void);
-static void setup_disk_manager(void);
-static void setup_drivers(void);
-static void setup_filesystem(void);
-static void setup_scheduling(void);
-static void finish_scheduling(void);
-static void enable_keyboard_input(void);
+#include "../multiboot2/multiboot2.h"
 
-void kernel_main(uint32_t addr, uint32_t magic)
-{
-    DISABLE_INTERRUPTS();
-    vga_terminal_write_string("Kernel: Interrupts disabled\n");
+#include <kernel/data-structures/kernel-context.h>
+kernel_context_t *kernel_context = &(kernel_context_t){};
 
-    setup_misc();
-    vga_terminal_write_string("Kernel: Misc setup done\n");
-
-    setup_gdt();
-    vga_terminal_write_string("Kernel: GDT setup done\n");
-
-    setup_idt();
-    vga_terminal_write_string("Kernel: IDT setup done\n");
-
-    setup_early_heap();
-    vga_terminal_write_string("Kernel: Early heap setup done\n");
-
-    setup_paging();
-    vga_terminal_write_string("Kernel: Paging setup done\n");
-
-    setup_heap();
-    vga_terminal_write_string("Kernel: Heap setup done\n");
-
-    setup_disk_manager();
-    vga_terminal_write_string("Kernel: Disk setup done\n");
-
-    setup_drivers();
-    vga_terminal_write_string("Kernel: Drivers setup done\n");
-
-    setup_filesystem();
-    vga_terminal_write_string("Kernel: Filesystem setup done\n");
-
-    setup_fault_handlers();
-    vga_terminal_write_string("Kernel: Fault handlers setup done\n");
-
-    ENABLE_INTERRUPTS();
-    vga_terminal_write_string("Kernel: Interrupts enabled\n");
-
-    enable_keyboard_input();
-    vga_terminal_write_string("Kernel: Keyboard input enabled\n");
-
-    char buffer[4];
-    while (true)
-    {
-        vga_terminal_write_string("Enter a graphical interface (y/n): ");
-
-        while (!terminal_get_input(buffer, sizeof(buffer)))
-        {
-            __asm__ volatile("hlt");
-        }
-
-        if (strcmp(buffer, "y") == 0)
-        {
-            vga_terminal_write_string("User selected graphical interface.\n");
-
-            if (setup_vesa())
-            {
-                vga_terminal_write_string("Graphical interface is unavailable\n");
-                continue;
-            }
-            vga_terminal_write_string("Graphical interface initialized.\n");
-            break;
-        }
-        else if (strcmp(buffer, "n") == 0)
-        {
-            vga_terminal_write_string("User selected text mode.\n");
-            break;
-        }
-        else
-        {
-            vga_terminal_write_string("Invalid input. Please enter 'y' or 'n'.\n");
-        }
-    }
-
-    DISABLE_INTERRUPTS();
-    vga_terminal_write_string("Kernel: Interrupts disabled before scheduling setup\n");
-
-    setup_scheduling();
-    vga_terminal_write_string("Kernel: Scheduling setup done\n");
-
-    finish_scheduling();
-    vga_terminal_write_string("Kernel: Scheduling started\n");
-
-    ENABLE_INTERRUPTS();
-    vga_terminal_write_string("Kernel: Interrupts enabled after scheduling\n");
-
-halt:
-    vga_terminal_write_string("Kernel halted.\n");
-    for (;;)
-    {
-        __asm__ volatile("hlt");
-    }
-}
-
-// ------------------------------------------------------------
-// Setup: Misc
-#include "misc-drivers/serial-com1.h"
-
-void setup_misc(void)
-{
-    kernel_misc_drivers_serial_com1_init();
-    vga_terminal_init(DEFAULT_VGA_TERMINAL_BUFFER_ADDRESS, VGA_TERMINAL_COLOR_MAGENTA, VGA_TERMINAL_COLOR_DARK_GREY);
-    vga_terminal_show_cursor(false);
-}
-
-// ------------------------------------------------------------
-// Setup: Descriptors
 #include "descriptors/global-descriptor-table.h"
-#include "bios32/bios32.h"
-#include "descriptors/task-state-segment.h"
 #include "descriptors/interrupt-descriptor-table.h"
 
-// ../interrupts/interrupt-request.c
-extern void kernel_interrupt_request_remap(void);
+#include "interrupts/interrupts.h"
 
-static void setup_gdt(void)
-{
-    kernel_global_descriptor_table_init();
-    bios32_init();
-    kernel_global_descriptor_table_install();
+#include <kernel/memory-management/heap-manager.h>
+#include <kernel/memory-management/paging-manager.h>
+#include <kernel/memory-management/physical-memory-manager.h>
 
-    uint32_t esp;
-    get_esp(esp);
-    kernel_task_state_segment_int(5, 0x10, esp);
-}
+#include "syscalls/syscalls.h"
 
-static void setup_idt(void)
-{
-    kernel_interrupt_descriptor_table_init();
-    kernel_interrupt_request_remap();
-    kernel_interrupt_descriptor_table_install();
-}
-
-// ------------------------------------------------------------
-// Setup: Memory
-#include "memory-management/kheap.h"
-
-void setup_early_heap(void)
-{
-    kheap_pre_init();
-}
-
-#include "memory-management/pmm.h"
-#include "memory-management/paging.h"
-
-void setup_paging(void)
-{
-    if (pmm_init(kernel_context->physical_memory_size))
-    {
-        paging_init();
-    }
-
-    uint32_t size_mb = kernel_context->physical_memory_size / (1024 * 1024);
-    if (size_mb > 0)
-    {
-        vga_terminal_write_string("Kernel: Physical Memory setup for %d MB\n", size_mb);
-    }
-    else
-    {
-        uint32_t size_kb = kernel_context->physical_memory_size / 1024;
-        vga_terminal_write_string("Kernel: Physical Memory setup for %d KB\n", size_kb);
-    }
-}
-
-void setup_heap(void)
-{
-    kheap_init();
-}
-
-// ------------------------------------------------------------
-// Setup: Fault Handlers
-#include "interrupts/interrupt-service.h"
+#include "drivers/pic/pic.h"
+#include "drivers/programable-interval-timer/programable-interval-timer.h"
 
 static void page_fault_handler(registers_t *r)
 {
@@ -228,342 +39,144 @@ static void page_fault_handler(registers_t *r)
     uint32_t reserved = r->error & 0x8;
     uint32_t inst_fetch = r->error & 0x10;
 
-    printf("Page Fault | Possible causes: [ ");
+    dbgprintf("Page Fault | Possible causes: [ ");
     if (!present)
-        printf("Page not present ");
+        dbgprintf("Page not present ");
     if (rw)
-        printf("Page is read only ");
+        dbgprintf("Page is read only ");
     if (user)
-        printf("Page is read only ");
+        dbgprintf("Page is read only ");
     if (reserved)
-        printf("Overwrote reserved bits ");
+        dbgprintf("Overwrote reserved bits ");
     if (inst_fetch)
-        printf("Instruction fetch ");
-    printf("] at 0x%X\n", faulting_address);
+        dbgprintf("Instruction fetch ");
+    dbgprintf("] at 0x%X\n", faulting_address);
 }
 
-void setup_fault_handlers(void)
+static void general_protection_fault_handler(registers_t *r)
 {
-    kernel_interrupt_service_set_fault_handle(14, page_fault_handler);
-}
-// ------------------------------------------------------------
-// Setup: Disk
-#include "disk-manager/disk-manager.h"
-void setup_disk_manager(void)
-{
-    kdisk_manager_init();
-}
+    uint32_t error_code = r->error;
 
-// ------------------------------------------------------------
-// Setup: Drivers
-#include "drivers/pit/pit.h"
-#include "drivers/pci/pci.h"
-#include "drivers/keyboard/keyboard.h"
-#include "drivers/mouse/mouse.h"
-#include "drivers/syscalls/syscalls.h"
+    uint32_t external = error_code & 0x1;     // 0 = internal, 1 = external event
+    uint32_t table = (error_code >> 1) & 0x3; // 0 = GDT, 1 = IDT, 2 = LDT, ?? = ????
+    uint32_t index = (error_code >> 3);       // Index of the descriptor in the table
 
-void setup_drivers(void)
-{
-    syscalls_init();
-    keyboard_init();
-    mouse_init();
-    pci_init();
-    // Should maybe go below 1000hz?
-    pit_init(1000);
-}
-
-// ------------------------------------------------------------
-// Setup: Filesystem
-#include "filesystem/filesystem.h"
-void setup_filesystem(void)
-{
-    uint8_t count = 0;
-    disk_device_t *devices = disk_manager_get_devices(&kernel_context->disk_manager, &count);
-    vga_terminal_write_string("Kernel: Disks %d\n", count);
-    for (uint8_t i = 0; i < count; i++)
+    dbgprintf("General Protection Fault | Error code: 0x%X\n", error_code);
+    dbgprintf("Details: [ ");
+    if (external)
+        dbgprintf("External event ");
+    switch (table)
     {
-        ide_device_t *dev = devices[i].dev;
-        vga_terminal_write_string(" Disk %d - %s\n", i, dev->model);
-    }
-
-    kernel_filesystem_init();
-}
-
-// ------------------------------------------------------------
-// Setup: Scheduling
-#include <scheduling/scheduling.h>
-#include "kthread/kthread.h"
-
-// kthread/thread/**
-extern void kthread_graphics(void);
-extern void kthread_vga_shell(void);
-extern void kthread_task_cleaner(void);
-
-void kthread_idle(void)
-{
-    while (true)
-    {
-        __asm__ volatile("hlt");
-    }
-}
-
-void kthread_aids(void)
-{
-    for (int i = 0; i < 10; i++);
-
-    scheduling_exit();
-}
-
-// scheduling.c
-extern void *syscall_malloc(int size);
-extern void syscall_free(void *address);
-extern void syscall_get_task_directory(char* buffer, uint32_t buffer_size);
-void setup_scheduling(void)
-{
-    scheduling_init();
-
-    syscalls_register(SYSCALL_EXIT, (void *)scheduling_exit);
-    syscalls_register(SYSCALL_SLEEP, (void *)scheduling_sleep);
-    syscalls_register(SYSCALL_YIELD, (void *)scheduling_yield);
-
-    syscalls_register(SYSCALL_MALLOC, (void *)syscall_malloc);
-    syscalls_register(SYSCALL_FREE, (void *)syscall_free);
-    
-    syscalls_register(SYSCALL_OPEN, (void*)kernel_filesystem_get_file);
-    syscalls_register(SYSCALL_READ, (void*)kernel_filesystem_read_file);
-    syscalls_register(SYSCALL_LIST_DIR, (void*)kernel_filesystem_list_dir);
-
-    syscalls_register(SYSCALL_GET_SYSTEM_TICK_COUNT, (void *)pit_get_tick);
-
-    syscalls_register(SYSCALL_GET_TASK_DIRECTORY, (void*)syscall_get_task_directory);
-
-    kthread_register((kthread_entry_t)kthread_idle, "idle-thread");
-    kthread_register((kthread_entry_t)kthread_task_cleaner, "task-cleaner");
-    kthread_register((kthread_entry_t)kthread_aids, "kthread_aids");
-
-    kthread_register((kthread_entry_t)kthread_graphics, "vesa-graphics");
-    kthread_register((kthread_entry_t)kthread_vga_shell, "vga-shell");
-}
-void finish_scheduling(void)
-{
-    kthread_start("idle-thread", 0, NULL);
-    kthread_start("task-cleaner", 0, NULL);
-    kthread_start("kthread_aids", 0, NULL);
-
-    if (!kernel_context->video_state.is_text_mode)
-    {
-        kthread_start("vesa-graphics", 0, NULL);
-    }
-    else
-    {
-        kthread_start("vga-shell", 0, NULL);
-    }
-
-    pit_add_handle((pit_handle_t)scheduling_schedule);
-}
-
-// ------------------------------------------------------------
-// Setup: Input
-
-static void vga_terminal_keyboard_input_handle(keyboard_key_t keyboard_key, const keyboard_map_t keyboard_map)
-{
-    if (keyboard_key.value != '\0' && keyboard_key.is_pressed)
-    {
-        char c = keyboard_key.value;
-
-        if (isletter(c) || isdigit(c) || ispunct(c) || c == ' ' || c == '\n' || c == '\b')
-        {
-            if (keyboard_map[KEY_LEFT_SHIFT].is_pressed || keyboard_map[KEY_RIGHT_SHIFT].is_pressed)
-            {
-                if (c >= 'a' && c <= 'z')
-                {
-                    c -= ('a' - 'A'); // lowercase -> uppercase
-                }
-                else
-                {
-                    switch (c)
-                    {
-                    case '1':
-                        c = '!';
-                        break;
-                    case '2':
-                        c = '@';
-                        break;
-                    case '3':
-                        c = '#';
-                        break;
-                    case '4':
-                        c = '$';
-                        break;
-                    case '5':
-                        c = '%';
-                        break;
-                    case '6':
-                        c = '^';
-                        break;
-                    case '7':
-                        c = '&';
-                        break;
-                    case '8':
-                        c = '*';
-                        break;
-                    case '9':
-                        c = '(';
-                        break;
-                    case '0':
-                        c = ')';
-                        break;
-                    case '-':
-                        c = '_';
-                        break;
-                    case '=':
-                        c = '+';
-                        break;
-                    case '[':
-                        c = '{';
-                        break;
-                    case ']':
-                        c = '}';
-                        break;
-                    case '\\':
-                        c = '|';
-                        break;
-                    case ';':
-                        c = ':';
-                        break;
-                    case '\'':
-                        c = '"';
-                        break;
-                    case ',':
-                        c = '<';
-                        break;
-                    case '.':
-                        c = '>';
-                        break;
-                    case '/':
-                        c = '?';
-                        break;
-                    case '`':
-                        c = '~';
-                        break;
-                    default:
-                        break; // leave other chars unchanged
-                    }
-                }
-            }
-
-            if (terminal_add_key(c))
-                vga_terminal_write(&c, 1);
-        }
-        else
-        {
-            return;
-        }
-    }
-}
-void enable_keyboard_input(void)
-{
-    vga_terminal_show_cursor(true);
-    keyboard_add_input_handle((keyboard_input_handle_t)vga_terminal_keyboard_input_handle);
-}
-
-// ------------------------------------------------------------
-// Setup: VESA
-#include "drivers/vesa/vesa.h"
-
-int setup_vesa(void)
-{
-    const int min_width = 640;
-    const int min_height = 400;
-
-    if (vesa_init())
-        return 1;
-
-    vga_terminal_clear();
-
-    vesa_mode_t *vesa_modes = vesa_get_all_modes();
-
-    // Gather valid modes into a temporary list for indexed selection
-    typedef struct
-    {
-        int index;
-        int mode_number;
-        int width;
-        int height;
-    } selectable_mode_t;
-
-    selectable_mode_t valid_modes[VESA_MODE_SIZE];
-    int valid_count = 0;
-
-    vga_terminal_write_string("Available VESA modes (select by number):\n");
-    for (int i = 0; i < VESA_MODE_SIZE; i++)
-    {
-        if (vesa_modes[i].number == 0 || vesa_modes[i].info.bpp != 32)
-            continue;
-
-        if (vesa_modes[i].info.width < min_width || vesa_modes[i].info.height < min_height)
-            continue;
-
-        valid_modes[valid_count].index = valid_count + 1;
-        valid_modes[valid_count].mode_number = vesa_modes[i].number;
-        valid_modes[valid_count].width = vesa_modes[i].info.width;
-        valid_modes[valid_count].height = vesa_modes[i].info.height;
-
-        vga_terminal_write_string("  %d) %dx%d\n",
-                                  valid_modes[valid_count].index,
-                                  valid_modes[valid_count].width,
-                                  valid_modes[valid_count].height);
-
-        valid_count++;
-    }
-
-    if (valid_count == 0)
-    {
-        vga_terminal_write_string("No valid VESA modes found.\n");
-        return 1;
-    }
-
-    char buffer[16];
-    while (true)
-    {
-        vga_terminal_write_string("Choose a mode number (or 'q' to quit): ");
-
-        while (!terminal_get_input(buffer, sizeof(buffer)))
-        {
-            __asm__ volatile("hlt");
-        }
-
-        if (buffer[0] == 'q' || buffer[0] == 'Q')
-        {
-            vga_terminal_write_string("Cancelled mode selection.\n");
-            return 1; // cancel
-        }
-
-        int choice = atoi(buffer);
-
-        if (choice < 1 || choice > valid_count)
-        {
-            vga_terminal_write_string("Invalid selection. Please enter a valid number.\n");
-            continue;
-        }
-
-        int selected_mode = valid_modes[choice - 1].mode_number;
-        vga_terminal_write_string("Selected mode: %d - %dx%d\n",
-                                  selected_mode,
-                                  valid_modes[choice - 1].width,
-                                  valid_modes[choice - 1].height);
-
-        if (vesa_set_mode(selected_mode))
-        {
-            vga_terminal_write_string("Failed to set the selected mode. Try another.\n");
-            continue;
-        }
-
+    case 0:
+        dbgprintf("GDT ");
+        break;
+    case 1:
+        dbgprintf("IDT ");
+        break;
+    case 2:
+        dbgprintf("LDT ");
+        break;
+    default:
+        dbgprintf("Unknown table ");
         break;
     }
+    dbgprintf("Index: %D ]\n", index);
+    dbgprintf("EIP at fault: 0x%X\n", r->eip);
+}
 
-    keyboard_remove_input_handle();
-    vga_terminal_destroy();
+void kernel_main(uint32_t magic, uint32_t addr)
+{
+    DISABLE_INTERRUPTS();
+    if (!IS_VALID_MULTIBOOT2_MAGIC(magic))
+        return;
 
-    return 0;
+    kernel_serial_com1_init();
+
+    kernel_global_descriptor_table_init();
+    kernel_global_descriptor_table_install();
+
+    kernel_interrupt_descriptor_table_init();
+    pic_remap();
+    kernel_interrupts_init();
+    kernel_interrupt_descriptor_table_finalize();
+
+    multiboot2_get_physical_memory_size(addr, &kernel_context->memory_info.useable_memory);
+
+    kernel_interrupts_add_service_handle(14, (interrupts_handle_t)page_fault_handler);
+    kernel_interrupts_add_service_handle(13, (interrupts_handle_t)general_protection_fault_handler);
+
+    {
+        // linker.ld
+        extern uint32_t __start_of_kernel_space;
+        extern uint32_t __start_of_kernel;
+        extern uint32_t __end_of_kernel;
+        extern uint32_t __kernel_heap_start;
+        extern uint32_t __kernel_heap_initial_end;
+        extern uint32_t __kernel_heap_max_end;
+
+        heap_manager_bootstrap(&kernel_context->heap_manager, (uint32_t)(&__end_of_kernel));
+
+        physical_memory_manager_init(&kernel_context->system_physical_memory_manager, kernel_context->memory_info.useable_memory, NULL, &kernel_context->heap_manager);
+
+        page_directory_t *pd = heap_manager_malloc(&kernel_context->heap_manager, sizeof(page_directory_t), 1, NULL);
+
+        paging_manager_init(
+            &kernel_context->paging_manager,
+            pd,
+            &kernel_context->heap_manager,
+            &kernel_context->system_physical_memory_manager,
+            1);
+
+        paging_manager_allocate_range(&kernel_context->paging_manager, (uint32_t)(&__start_of_kernel_space), (uint32_t)(&__kernel_heap_start), 1, 1);
+
+        paging_manager_set_system_paging(&kernel_context->paging_manager, 0);
+        paging_manager_enable(&kernel_context->paging_manager);
+
+        paging_manager_identity_allocate_range(&kernel_context->paging_manager, 0x0, 0x100000, 1, 1);
+
+        heap_manager_init(&kernel_context->heap_manager, (uint32_t)(&__kernel_heap_start), (uint32_t)(&__kernel_heap_initial_end), (uint32_t)(&__kernel_heap_max_end), 1, 0, 0, &kernel_context->paging_manager);
+    }
+
+    syscalls_init();
+    
+    ENABLE_INTERRUPTS();
+}
+
+void* kernel_malloc(uint32_t size){
+    return heap_manager_malloc(&kernel_context->heap_manager, size, 0, NULL);
+}
+
+void kernel_free(void* ptr){
+    heap_manager_free(&kernel_context->heap_manager, (uint32_t)ptr);
+}
+
+void* kernel_amalloc(uint32_t size){
+    return heap_manager_malloc(&kernel_context->heap_manager, size, 1, NULL);
+}
+
+void* kernel_calloc(uint32_t n, uint32_t size) {
+    uint32_t total = n * size;
+    void* ptr = kernel_amalloc(total);
+    if (ptr)
+        memset(ptr, 0, total);
+    return ptr;
+}
+
+// NOTE: a really poor implementation (not utilizing core heap functionality / data)
+void* kernel_realloc(void* ptr, uint32_t size) {
+    if (!ptr)
+        return kernel_amalloc(size);  
+
+    if (size == 0) {
+        kernel_free(ptr);
+        return NULL;
+    }
+
+    void* new_ptr = kernel_amalloc(size);
+    if (!new_ptr)
+        return NULL;
+
+    memcpy(new_ptr, ptr, size);
+    kernel_free(ptr);
+    return new_ptr;
 }

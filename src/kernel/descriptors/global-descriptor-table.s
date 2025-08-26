@@ -1,6 +1,5 @@
-### -------------------------
-### global-descriptor-table.s
-### @brief This file defines a core function for the Global Descriptor Table.
+### -------------------------------
+### @file global-descriptor-table.s
 
 .global _gdt_flush
 .extern _pGDT
@@ -15,4 +14,5 @@ _gdt_flush:
   mov %ax, %ss
   jmp $0x08,$flush2 
 flush2:
+  nop
   ret

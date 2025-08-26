@@ -1,6 +1,5 @@
-### ------
-### boot.s
-### @brief This file handles the switch from GRUB to protected mode. It also sets up the kernel as a higher half.
+### ------------
+### @file boot.s
 
 .section .bss
 stack_bottom:
@@ -8,6 +7,7 @@ stack_bottom:
 stack_top:
 
 .set KVIRT_BASE, 0xC0000000
+.set KVIRT_OFFSET, 0x100000
 .set KPAGE_NUM, (KVIRT_BASE >> 22)
 
 .section .data
@@ -51,8 +51,11 @@ _entry_higher:
 
     movl $stack_top, %esp
 
-    push %eax
+    addl $KVIRT_BASE, %ebx
+
+    # push multiboot data   
     push %ebx
+    push %eax
 
     call kernel_main
 

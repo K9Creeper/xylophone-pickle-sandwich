@@ -1,6 +1,5 @@
-/// -------------------------
-/// global-descriptor-table.h
-/// @brief This file declares the functions for setting up the Global Descriptor Table within the kernel.
+/// -------------------------------
+/// @file global-descriptor-table.h
 
 #ifndef KERNEL_DESCRIPTORS_GLOBAL_DESCRIPTOR_TABLE_H
 #define KERNEL_DESCRIPTORS_GLOBAL_DESCRIPTOR_TABLE_H

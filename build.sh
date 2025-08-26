@@ -10,8 +10,7 @@ INCLUDES="-Iinclude"
 
 cleanBuild(){
     echo -e "\nCleaning up previous build files..."
-    rm -f $BUILD_BIN_PATH/*.o
-    rm -f $BUILD_BIN_PATH/*.bin
+    ./clean.sh
 }
 
 asmCompile(){
@@ -75,7 +74,7 @@ cCompile(){
     done
 }
 
-./clean.sh
+cleanBuild
 
 mkdir build/.bin
 
@@ -167,7 +166,6 @@ if grub-file --is-x86-multiboot2 build/build.bin; then
 
     # Clean up build binary
     rm build/build.bin
-    #rm build/.iso/boot/build.bin
 
     echo -e "\nDisk image ready: build/os.img"
 
@@ -177,9 +175,6 @@ else
     echo -e "\033[1mFile does not have a valid Multiboot header.\033[0m"
 
     cleanBuild
-
-    rmdir build/.bin
-    rm build/build.bin
 
     echo -e ""
 fi

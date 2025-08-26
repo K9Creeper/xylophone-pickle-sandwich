@@ -1,6 +1,5 @@
-/// --------
-/// bitmap.c
-/// @brief This file defines the core functions of the bitmap structure.
+/// --------------
+/// @file bitmap.c
 
 #include <bitmap.h>
 #include <memory.h> 
@@ -49,23 +48,4 @@ void bitmap_set_memory_size(bitmap_t* bitmap, uint32_t memory_size) {
     uint32_t entry_count = memory_size / bitmap->sizeof_type_t;
 
     bitmap->bit_count = entry_count * bitmap->bits_per_entry;
-}
-
-uint32_t bitmap_index_from_bit(bitmap_t* bitmap, uint32_t idx) {
-    if (!bitmap || bitmap->bits_per_entry == 0)
-        return (uint32_t)-1;
-
-    return idx / bitmap->bits_per_entry;
-}
-
-uint32_t bitmap_offset_from_bit(bitmap_t* bitmap, uint32_t idx) {
-    if (!bitmap || bitmap->bits_per_entry == 0)
-        return (uint32_t)-1;
-
-    return idx % bitmap->bits_per_entry;
-}
-
-void bitmap_clear(bitmap_t* bitmap) {
-    if (bitmap && bitmap->array)
-        memset((uint8_t*)bitmap->array, 0, bitmap->memory_size);
 }

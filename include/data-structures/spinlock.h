@@ -1,13 +1,12 @@
-/// ----------
-/// spinlock.h
-/// @brief This file defines the strucuture of a spinlock.
+/// ----------------
+/// @file spinlock.h
 
 #ifndef SPINLOCK_H
 #define SPINLOCK_H
 
-#include <stdbool.h>
+#include <stdint.h>
 #include <stdatomic.h>
 
-typedef _Atomic bool spinlock_t;
+typedef _Atomic uint8_t spinlock_t;
 
 #endif
