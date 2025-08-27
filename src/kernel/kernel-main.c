@@ -25,7 +25,7 @@ kernel_context_t *kernel_context = &(kernel_context_t){};
 
 #include "syscalls/syscalls.h"
 
-#include "drivers/pic/pic.h"
+#include "drivers/pic-8259/pic-8259.h"
 #include "drivers/programable-interval-timer/programable-interval-timer.h"
 
 static void page_fault_handler(registers_t *r)
@@ -96,7 +96,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     kernel_global_descriptor_table_install();
 
     kernel_interrupt_descriptor_table_init();
-    pic_remap();
+    pic_8259_remap();
     kernel_interrupts_init();
     kernel_interrupt_descriptor_table_finalize();
 
@@ -138,41 +138,47 @@ void kernel_main(uint32_t magic, uint32_t addr)
     }
 
     syscalls_init();
-    
+
     ENABLE_INTERRUPTS();
 }
 
-void* kernel_malloc(uint32_t size){
+void *kernel_malloc(uint32_t size)
+{
     return heap_manager_malloc(&kernel_context->heap_manager, size, 0, NULL);
 }
 
-void kernel_free(void* ptr){
+void kernel_free(void *ptr)
+{
     heap_manager_free(&kernel_context->heap_manager, (uint32_t)ptr);
 }
 
-void* kernel_amalloc(uint32_t size){
+void *kernel_amalloc(uint32_t size)
+{
     return heap_manager_malloc(&kernel_context->heap_manager, size, 1, NULL);
 }
 
-void* kernel_calloc(uint32_t n, uint32_t size) {
+void *kernel_calloc(uint32_t n, uint32_t size)
+{
     uint32_t total = n * size;
-    void* ptr = kernel_amalloc(total);
+    void *ptr = kernel_amalloc(total);
     if (ptr)
         memset(ptr, 0, total);
     return ptr;
 }
 
 // NOTE: a really poor implementation (not utilizing core heap functionality / data)
-void* kernel_realloc(void* ptr, uint32_t size) {
+void *kernel_realloc(void *ptr, uint32_t size)
+{
     if (!ptr)
-        return kernel_amalloc(size);  
+        return kernel_amalloc(size);
 
-    if (size == 0) {
+    if (size == 0)
+    {
         kernel_free(ptr);
         return NULL;
     }
 
-    void* new_ptr = kernel_amalloc(size);
+    void *new_ptr = kernel_amalloc(size);
     if (!new_ptr)
         return NULL;
 

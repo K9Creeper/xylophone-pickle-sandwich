@@ -4,14 +4,13 @@
 #ifndef KTHREAD_H
 #define KTHREAD_H
 
-#include <kernel/data-structures/scheduler/task.h>
 
 #define KTHREAD_MAX_COUNT 128
 
 typedef void(*kthread_entry_t)(void);
 
 typedef struct kthread_s{
-    char name[TASK_NAME_LENGTH];
+    char name[32];
     kthread_entry_t entry;
 } kthread_t;
 

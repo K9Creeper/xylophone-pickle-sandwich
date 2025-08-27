@@ -1,8 +1,8 @@
 /// -----------
-/// @file pic.h
+/// @file pic-8259.h
 
-#ifndef PIC_H
-#define PIC_H
+#ifndef PIC_8259_H
+#define PIC_8259_H
 
 #define PIC1 0x20 /* IO base address for master PIC */
 #define PIC2 0xA0 /* IO base address for slave PIC */

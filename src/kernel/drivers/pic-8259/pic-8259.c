@@ -1,7 +1,7 @@
 /// ------------
-/// @file pic.c
+/// @file pic-8259.c
 
-#include "pic.h"
+#include "pic-8259.h"
 
 #include <memory.h>
 
@@ -19,7 +19,7 @@
 
 #define CASCADE_IRQ 2
 
-void pic_remap(void)
+void pic_8259_remap(void)
 {
     outportb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4); // starts the initialization sequence (in cascade mode)
     io_wait();
@@ -42,4 +42,9 @@ void pic_remap(void)
     // Unmask both PICs.
     outportb(PIC1_DATA, 0);
     outportb(PIC2_DATA, 0);
+}
+
+void pic_8259_disable(void){
+    outportb(PIC1_DATA, 0xff);
+    outportb(PIC2_DATA, 0xff);
 }
