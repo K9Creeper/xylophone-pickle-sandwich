@@ -4,7 +4,6 @@
 #ifndef KTHREAD_H
 #define KTHREAD_H
 
-
 #define KTHREAD_MAX_COUNT 128
 
 typedef void(*kthread_entry_t)(void);

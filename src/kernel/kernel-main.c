@@ -105,6 +105,8 @@ void kernel_main(uint32_t magic, uint32_t addr)
     kernel_interrupts_add_service_handle(14, (interrupts_handle_t)page_fault_handler);
     kernel_interrupts_add_service_handle(13, (interrupts_handle_t)general_protection_fault_handler);
 
+    syscalls_init();
+
     {
         // linker.ld
         extern uint32_t __start_of_kernel_space;
@@ -127,17 +129,13 @@ void kernel_main(uint32_t magic, uint32_t addr)
             &kernel_context->system_physical_memory_manager,
             1);
 
-        paging_manager_allocate_range(&kernel_context->paging_manager, (uint32_t)(&__start_of_kernel_space), (uint32_t)(&__kernel_heap_start), 1, 1);
+        paging_manager_allocate_range(&kernel_context->paging_manager, (uint32_t)(&__start_of_kernel_space), kernel_context->heap_manager.placement_address + (1 * PAGE_SIZE), 1, 1);
 
         paging_manager_set_system_paging(&kernel_context->paging_manager, 0);
         paging_manager_enable(&kernel_context->paging_manager);
 
-        paging_manager_identity_allocate_range(&kernel_context->paging_manager, 0x0, 0x100000, 1, 1);
-
         heap_manager_init(&kernel_context->heap_manager, (uint32_t)(&__kernel_heap_start), (uint32_t)(&__kernel_heap_initial_end), (uint32_t)(&__kernel_heap_max_end), 1, 0, 0, &kernel_context->paging_manager);
     }
-
-    syscalls_init();
 
     ENABLE_INTERRUPTS();
 }
