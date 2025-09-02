@@ -7,6 +7,8 @@
 
 #include <stddef.h>
 
+// TODO: Make sure to only count regions above kernel (end) address.
+//  
 void multiboot2_get_physical_memory_size(uint32_t addr, uint32_t *memory)
 {
     if (memory == NULL)

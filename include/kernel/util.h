@@ -32,7 +32,7 @@ extern int system_interrupt_disable_counter;
     asm("cli"); \
     while (1)
 
-// kernel-main.c
+// kernel-memory.c
 void* kernel_malloc(uint32_t size);
 void  kernel_free(void* ptr);
 void* kernel_amalloc(uint32_t size);

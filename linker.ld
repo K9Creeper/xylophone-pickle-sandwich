@@ -6,7 +6,15 @@ virt = offset + phys;
 
 SECTIONS
 {
+    .bios32_data 0x8000 : AT(0x8000)
+    {
+        __bios32_data_start = .;
+        KEEP(*(.bios32_data))
+        __bios32_data_end = .;
+    }
+
     . = virt;
+
     __start_of_kernel_space = offset;
     __start_of_kernel = .;
 
