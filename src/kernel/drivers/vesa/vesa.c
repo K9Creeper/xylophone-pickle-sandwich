@@ -4,7 +4,6 @@
 #include "vesa.h"
 
 #include <memory.h>
-#include <dbgprintf.h>
 
 #include "../../bios32/bios32.h"
 #include <kernel/memory-management/paging-manager.h>

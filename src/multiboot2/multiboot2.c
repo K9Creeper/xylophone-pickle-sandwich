@@ -5,8 +5,6 @@
 
 #include "multiboot2.h"
 
-#include <dbgprintf.h>
-
 #include <stddef.h>
 
 // TODO: Make sure to only count regions above kernel (end) address.
