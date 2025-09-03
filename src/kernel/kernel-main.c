@@ -33,7 +33,6 @@ extern uint32_t __kernel_heap_max_end;
 extern void page_fault_handler(void);
 extern void general_protection_fault_handler(void);
 
-
 void kernel_main(uint32_t magic, uint32_t addr)
 {
     DISABLE_INTERRUPTS();
@@ -55,7 +54,9 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     /// -------------------
     /// Get Physical Memory Info
-    multiboot2_get_physical_memory_size(addr, &kernel_context->memory_info.useable_memory);
+    multiboot2_get_physical_memory_size(addr, &kernel_context->memory_info.reserved_memory);
+
+    kernel_context->memory_info.useable_memory = kernel_context->memory_info.reserved_memory - ((uint32_t)(&__end_of_kernel) - (uint32_t)(&__start_of_kernel));
 
     /// -------------------
     /// Register Exception Handlers
@@ -112,5 +113,4 @@ void kernel_main(uint32_t magic, uint32_t addr)
     kernel_bios32_init();
 
     ENABLE_INTERRUPTS();
-    
 }

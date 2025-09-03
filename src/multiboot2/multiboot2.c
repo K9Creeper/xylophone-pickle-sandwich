@@ -5,10 +5,12 @@
 
 #include "multiboot2.h"
 
+#include <dbgprintf.h>
+
 #include <stddef.h>
 
 // TODO: Make sure to only count regions above kernel (end) address.
-//  
+//
 void multiboot2_get_physical_memory_size(uint32_t addr, uint32_t *memory)
 {
     if (memory == NULL)
@@ -25,20 +27,15 @@ void multiboot2_get_physical_memory_size(uint32_t addr, uint32_t *memory)
         case MULTIBOOT_TAG_TYPE_MMAP:
         {
             multiboot_memory_map_t *mmap;
-
+            
             for (mmap = ((struct multiboot_tag_mmap *)tag)->entries;
                  (multiboot_uint8_t *)mmap < (multiboot_uint8_t *)tag + tag->size;
                  mmap = (multiboot_memory_map_t *)((unsigned long)mmap + ((struct multiboot_tag_mmap *)tag)->entry_size))
-                    *memory += mmap->len;
-
-                /* printf(" base_addr = 0x%x%x,"
-                       " length = 0x%x%x, type = 0x%x\n",
-                       (unsigned)(mmap->addr >> 32),
-                       (unsigned)(mmap->addr & 0xffffffff),
-                       (unsigned)(mmap->len >> 32),
-                       (unsigned)(mmap->len & 0xffffffff),
-                       (unsigned)mmap->type);
-                */
+            {
+                if(mmap->type != MULTIBOOT_MEMORY_AVAILABLE || mmap->addr == 0x0) continue;
+                
+                *memory += mmap->len;
+            }
         }
             return;
         default:

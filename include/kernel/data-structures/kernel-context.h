@@ -24,6 +24,7 @@ typedef struct kernel_context_video_state_s
 
 typedef struct kernel_context_memory_info_s
 {
+    uint32_t reserved_memory;
     uint32_t useable_memory;
 } kernel_context_memory_info_t;
 
