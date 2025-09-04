@@ -112,5 +112,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// Initialize BIOS32 / Other low-level services
     kernel_bios32_init();
 
+    vesa_init();
+
     ENABLE_INTERRUPTS();
 }

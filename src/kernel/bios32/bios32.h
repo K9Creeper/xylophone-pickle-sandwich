@@ -10,6 +10,6 @@
 
 extern uint8_t kernel_bios32_init(void);
 
-extern void* kernel_bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t *out_reg);
+extern registers16_t* kernel_bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t *out_reg);
 
 #endif

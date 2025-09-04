@@ -24,6 +24,15 @@ void page_fault_handler(registers_t *r)
     if (reserved) dbgprintf("Overwrote reserved bits ");
     if (inst_fetch) dbgprintf("Instruction fetch ");
     dbgprintf("] at 0x%X\n", faulting_address);
+
+    dbgprintf("Registers:\n");
+    dbgprintf("EAX=0x%X EBX=0x%X ECX=0x%X EDX=0x%X\n",
+              r->eax, r->ebx, r->ecx, r->edx);
+    dbgprintf("ESI=0x%X EDI=0x%X EBP=0x%X ESP=0x%X\n",
+              r->esi, r->edi, r->ebp, r->esp);
+    dbgprintf("EIP=0x%X CS=0x%X DS=0x%X\n",
+              r->eip, r->cs, r->ds);
+
 }
 
 void general_protection_fault_handler(registers_t *r)

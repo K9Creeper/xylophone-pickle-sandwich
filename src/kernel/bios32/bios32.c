@@ -60,7 +60,7 @@ uint8_t kernel_bios32_init(void)
     return 0;
 }
 
-void *kernel_bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t *out_reg)
+registers16_t* kernel_bios32_service(uint8_t interrupt_num, registers16_t *in_reg, registers16_t *out_reg)
 {
     memcpy((uint8_t *)(&_in_reg_ptr), (uint8_t *)(in_reg), sizeof(registers16_t));
     memcpy((uint8_t *)(&_intnum_ptr), (uint8_t *)(&interrupt_num), sizeof(uint8_t));
@@ -79,5 +79,5 @@ void *kernel_bios32_service(uint8_t interrupt_num, registers16_t *in_reg, regist
 
     ENABLE_INTERRUPTS();
 
-    return (void *)out_reg->di;
+    return out_reg;
 }
