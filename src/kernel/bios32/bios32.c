@@ -32,8 +32,6 @@ extern registers16_t _in_reg_ptr;
 extern registers16_t _out_reg_ptr;
 extern uint16_t _intnum_ptr;
 
-extern void* sp_snapshot;
-
 interrupt_descriptor_table_ptr_t real_idt_ptr;
 global_descriptor_table_ptr_t real_gdt_ptr;
 
@@ -41,7 +39,7 @@ extern global_descriptor_table_entry_t pGDT[KERNEL_DESCRIPTORS_GDT_ENTRYCOUT];
 
 uint8_t kernel_bios32_init(void)
 {
-    if (_bios32_helper_end > 0x8FF0 || _bios32_helper != 0x8000)
+    if (_bios32_helper_end > 0x8FF0)
         return 1;
 
     paging_manager_identity_allocate_range(
