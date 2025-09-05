@@ -34,8 +34,8 @@ _bios32_helper:
     movl %cr3, %ebx
     movl %ecx, %cr3
 
-    lgdt ( _gdt_ptr )
-    lidt ( _idt_ptr )
+    lgdt [ _gdt_ptr ]
+    lidt [ _idt_ptr ]
 
     jmp $0x30,$protected_mode_16
 protected_mode_16:
@@ -86,10 +86,6 @@ real_mode_16:
     stosw
 
     movw $_in_reg_ptr, %sp
-    movw %sp, %si
-    movw $_return_stack_bottom, 0(%si)
-    movw $0x0, 16(%si)
-
     popa
 
     movw $temp_esp_3, %sp
@@ -168,8 +164,6 @@ _gdt_ptr:
 _idt_ptr:
     .long 0x00000000
     .long 0x00000000
-#_intnum_ptr:
-#    .byte 0x0
 _in_reg_ptr:
     .skip 28
 _out_reg_ptr:

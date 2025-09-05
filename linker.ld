@@ -6,6 +6,13 @@ virt = offset + phys;
 
 SECTIONS
 {
+    .lowmem 0x1000 : AT(0x1000)
+    {
+        __lowmem_start = .;
+        KEEP(*(.lowmem))
+        __lowmem_end = .;
+    }
+
     .bios32_data 0x8000 : AT(0x8000)
     {
         __bios32_data_start = .;

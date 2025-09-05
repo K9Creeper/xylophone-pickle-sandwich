@@ -30,6 +30,9 @@ extern uint32_t __kernel_heap_start;
 extern uint32_t __kernel_heap_initial_end;
 extern uint32_t __kernel_heap_max_end;
 
+extern uint32_t __lowmem_start;
+extern uint32_t __lowmem_end;
+
 extern void page_fault_handler(void);
 extern void general_protection_fault_handler(void);
 
@@ -108,6 +111,14 @@ void kernel_main(uint32_t magic, uint32_t addr)
         &kernel_context->paging_manager
     );
 
+    paging_manager_identity_allocate_range(
+        &kernel_context->paging_manager,
+        (uint32_t)(&__lowmem_start),
+        (uint32_t)(&__lowmem_end),
+        1,
+        1
+    );
+
     /// -------------------
     /// Initialize BIOS32 / Other low-level services
     kernel_bios32_init();
@@ -115,12 +126,6 @@ void kernel_main(uint32_t magic, uint32_t addr)
     if(vesa_init()){
         dbgprintf("VESA IS NOT SUPPORTED\n");
         PANIC();
-    }
-
-    vesa_mode_t* modes = vesa_get_all_modes();
-
-    for(int i = 0; i < VESA_MODE_SIZE; i++){
-        dbgprintf("%d, %d, %d\n", modes[i].info.width, modes[i].info.height, modes[i].info.bpp);
     }
 
     ENABLE_INTERRUPTS();

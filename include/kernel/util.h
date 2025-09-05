@@ -32,6 +32,12 @@ extern int system_interrupt_disable_counter;
     asm("cli"); \
     while (1)
 
+#define FP_OFF(ptr) ((uint16_t)((uint32_t)(ptr) & 0xFFFF))
+#define FP_SEG(ptr) ((uint16_t)(((uint32_t)(ptr) >> 4) & 0xFFFF))
+
+#define REGISTER_LOW_MEMORY_VARIABLE(type, name) \
+    static type __attribute__((used, section(".lowmem"))) name
+
 // kernel-memory.c
 void* kernel_malloc(uint32_t size);
 void  kernel_free(void* ptr);
