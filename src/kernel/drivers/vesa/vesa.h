@@ -10,7 +10,6 @@
 #define VESA_MODE_SIZE 111
 
 extern int vesa_init(void);
-
 extern void vesa_destroy(void);
 
 extern int vesa_set_mode(uint16_t mode);
