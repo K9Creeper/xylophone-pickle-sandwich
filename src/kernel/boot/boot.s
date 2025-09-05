@@ -58,9 +58,7 @@ _entry_higher:
     push %eax
 
     call kernel_main
-
-    cli
-
+    
 .hang:
     hlt
     jmp .hang

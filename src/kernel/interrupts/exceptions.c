@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <data-structures/registers.h>
 
-#include <dbgprintf.h>
+#include <kernel/dbgprintf.h>
 
 void page_fault_handler(registers_t *r)
 {

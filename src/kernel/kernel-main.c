@@ -2,7 +2,7 @@
 /// @file kernel-main.c
 
 #include <stdint.h>
-#include <dbgprintf.h>
+#include <kernel/dbgprintf.h>
 #include <kernel/util.h>
 #include <kernel/data-structures/kernel-context.h>
 #include <kernel/memory-management/heap-manager.h>
@@ -39,7 +39,8 @@ extern void general_protection_fault_handler(void);
 void kernel_main(uint32_t magic, uint32_t addr)
 {
     DISABLE_INTERRUPTS();
-    if (!IS_VALID_MULTIBOOT2_MAGIC(magic)) return;
+    if (!IS_VALID_MULTIBOOT2_MAGIC(magic))
+        return;
 
     /// -------------------
     /// Initialize Debug / Serial
@@ -55,6 +56,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     kernel_interrupts_init();
     kernel_interrupt_descriptor_table_finalize();
 
+    
     /// -------------------
     /// Get Physical Memory Info
     multiboot2_get_physical_memory_size(addr, &kernel_context->memory_info.reserved_memory);
@@ -78,8 +80,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
         &kernel_context->system_physical_memory_manager,
         kernel_context->memory_info.useable_memory,
         NULL,
-        &kernel_context->heap_manager
-    );
+        &kernel_context->heap_manager);
 
     page_directory_t *pd = heap_manager_malloc(&kernel_context->heap_manager, sizeof(page_directory_t), 1, NULL);
 
@@ -88,16 +89,14 @@ void kernel_main(uint32_t magic, uint32_t addr)
         pd,
         &kernel_context->heap_manager,
         &kernel_context->system_physical_memory_manager,
-        1
-    );
+        1);
 
     paging_manager_allocate_range(
         &kernel_context->paging_manager,
         (uint32_t)(&__start_of_kernel_space),
         kernel_context->heap_manager.placement_address + (1 * PAGE_SIZE),
         1,
-        1
-    );
+        1);
 
     paging_manager_set_system_paging(&kernel_context->paging_manager, 0);
     paging_manager_enable(&kernel_context->paging_manager);
@@ -108,24 +107,40 @@ void kernel_main(uint32_t magic, uint32_t addr)
         (uint32_t)(&__kernel_heap_initial_end),
         (uint32_t)(&__kernel_heap_max_end),
         1, 0, 0,
-        &kernel_context->paging_manager
-    );
+        &kernel_context->paging_manager);
 
     paging_manager_identity_allocate_range(
         &kernel_context->paging_manager,
         (uint32_t)(&__lowmem_start),
         (uint32_t)(&__lowmem_end),
         1,
-        1
-    );
+        1);
 
     /// -------------------
     /// Initialize BIOS32 / Other low-level services
     kernel_bios32_init();
 
-    if(vesa_init()){
+    /// -------------------
+    /// Initialize VBE's VESA
+
+    if (vesa_init())
+    {
+    bad_vesa:
         dbgprintf("VESA IS NOT SUPPORTED\n");
         PANIC();
+    }
+
+    uint16_t mode_count = 0;
+    vesa_mode_t *modes = vesa_get_all_modes(&mode_count);
+    uint16_t selected_mode = 0;
+    for (selected_mode = 0; selected_mode < mode_count; selected_mode++)
+    {
+        if (modes[selected_mode].info.bpp == 16)
+        {
+            if(vesa_set_mode(modes[selected_mode].number)) continue;
+            break;
+        }
+        if(selected_mode + 1 >= mode_count) { selected_mode = (uint16_t)-1; goto bad_vesa; }
     }
 
     ENABLE_INTERRUPTS();
