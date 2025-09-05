@@ -125,7 +125,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     if (vesa_init())
     {
-    bad_vesa:
+    vesa_panic:
         dbgprintf("VESA IS NOT SUPPORTED\n");
         PANIC();
     }
@@ -140,8 +140,10 @@ void kernel_main(uint32_t magic, uint32_t addr)
             if(vesa_set_mode(modes[selected_mode].number)) continue;
             break;
         }
-        if(selected_mode + 1 >= mode_count) { selected_mode = (uint16_t)-1; goto bad_vesa; }
+        if(selected_mode + 1 >= mode_count) { selected_mode = (uint16_t)-1; goto vesa_panic; }
     }
+
+    
 
     ENABLE_INTERRUPTS();
 }
