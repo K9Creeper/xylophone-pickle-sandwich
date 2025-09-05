@@ -112,7 +112,16 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// Initialize BIOS32 / Other low-level services
     kernel_bios32_init();
 
-    vesa_init();
+    if(vesa_init()){
+        dbgprintf("VESA IS NOT SUPPORTED\n");
+        PANIC();
+    }
+
+    vesa_mode_t* modes = vesa_get_all_modes();
+
+    for(int i = 0; i < VESA_MODE_SIZE; i++){
+        dbgprintf("%d, %d, %d\n", modes[i].info.width, modes[i].info.height, modes[i].info.bpp);
+    }
 
     ENABLE_INTERRUPTS();
 }

@@ -87,7 +87,7 @@ real_mode_16:
 
     movw $_in_reg_ptr, %sp
     movw %sp, %si
-    movw $_return_stack, 0(%si)
+    movw $_return_stack_bottom, 0(%si)
     movw $0x0, 16(%si)
 
     popa
@@ -133,8 +133,8 @@ _intnum_ptr:
 
     .code32
     movl %cr0, %eax
-    inc %eax
-    movl %eax, %cr0
+    orl $0x1, %eax
+    movl %eax, %cr0 
     .code16
 
     jmp $0x08,$protected_mode_32

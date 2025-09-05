@@ -39,7 +39,7 @@ extern global_descriptor_table_entry_t pGDT[KERNEL_DESCRIPTORS_GDT_ENTRYCOUT];
 
 uint8_t kernel_bios32_init(void)
 {
-    if (_bios32_helper_end > 0x8FF0)
+    if ((uint32_t)_bios32_helper_end > 0x8FF0)
         return 1;
 
     paging_manager_identity_allocate_range(
