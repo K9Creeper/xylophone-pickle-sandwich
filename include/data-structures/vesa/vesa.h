@@ -6,6 +6,26 @@
 
 #include <stdint.h>
 
+typedef enum vbe_return_status_e {
+    // AL: function support
+    VBE_FUNCTION_SUPPORTED       = 0x4F,  
+
+    // AH: function return status
+    VBE_SUCCESS                  = 0x00,  // Function call successful
+    VBE_FAILED                   = 0x01,  // Function call failed
+    VBE_NOT_SUPPORTED_BY_HARDWARE = 0x02, // Function not supported by hardware
+    VBE_INVALID_IN_CURR_MODE      = 0x03  // Function invalid in current mode
+} vbe_return_status_t;
+
+#define VBE_AL(ax) ((uint8_t)((ax) & 0x00FF))
+#define VBE_AH(ax) ((uint8_t)(((ax) >> 8) & 0x00FF))
+
+#define VBE_IS_FUNCTION_SUPPORTED(ax) (VBE_AL(ax) == VBE_FUNCTION_SUPPORTED)
+#define VBE_STATUS_SUCCESS(ax)           (VBE_AH(ax) == VBE_SUCCESS)
+#define VBE_STATUS_FAILED(ax)            (VBE_AH(ax) == VBE_FAILED)
+#define VBE_STATUS_NOT_SUPPORTED(ax)     (VBE_AH(ax) == VBE_NOT_SUPPORTED_BY_HARDWARE)
+#define VBE_STATUS_INVALID_IN_MODE(ax)   (VBE_AH(ax) == VBE_INVALID_IN_CURR_MODE)
+
 typedef struct vbe_info_block_s
 {
     char signature[4];     // must be "VESA" to indicate valid VBE support
