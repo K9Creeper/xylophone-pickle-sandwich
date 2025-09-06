@@ -49,7 +49,7 @@ typedef struct task_s
     uint32_t cs;          // 152
     uint32_t kesp;        // 156
     uint32_t kebp;        // 160
-    uint32_t thread_eip; // 164
+    uint32_t thread_eip;  // 164
 
     task_state_t state;
     task_mode_t mode;
@@ -59,8 +59,16 @@ typedef struct task_s
     paging_manager_t *paging_manger;
     heap_manager_t *heap_manger;
 
-    uint32_t wakeup_tick;
+    uint32_t wake_tick;
 
+    // reserved for implementation of filesystem
+    uint32_t reserved;
+
+    struct task_s *parent;
+    struct task_s *next;
+    struct task_s *prev;
 } __attribute__((__packed__)) task_t;
+
+typedef void (*task_entry_routine_t)(void);
 
 #endif
