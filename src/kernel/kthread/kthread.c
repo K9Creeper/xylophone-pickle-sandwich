@@ -17,7 +17,6 @@ int kthread_start(char* name, int argc, char* argv[]){
         
     for (const kthread_t* e = __start_kthread; e < __stop_kthread; ++e) {
         if(memcmp(name, e->name, strlen(e->name)) == 0){
-            dbgprintf("Starting %s at %p\n", e->name, e->entry);
             return task_create_kthread(e->entry, (char*)e->name, argc, argv);
         }
     }

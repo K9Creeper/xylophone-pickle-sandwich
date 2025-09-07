@@ -161,8 +161,6 @@ void kernel_main(uint32_t magic, uint32_t addr)
     kthread_start("aids", 0, NULL);
 
     ENABLE_INTERRUPTS();
-
-
 }
 
 static void aids(void){
