@@ -15,6 +15,8 @@
 #include "kernel/data-structures/kthread/kthread.h"
 #include "../kthread/kthread.h"
 
+#include "kernel/data-structures/syscalls.h"
+
 #include "task.h"
 
 static task_t *current_tasks[MAX_SCHEDULER_CPUS];
@@ -39,8 +41,6 @@ static uint8_t is_initalized = 0;
 
 extern void _task_restore_context(task_t *);
 extern void _task_save_context(task_t *);
-
-#include <kernel/dbgprintf.h>
 
 void scheduler_init(void)
 {
@@ -68,6 +68,8 @@ static int round_robin(uint32_t tick)
             break;
 
         sleep_queue_pop(&sleep_queue);
+        if (t->state != TASK_STATE_CREATED)
+            t->state = TASK_STATE_RUNNING;
         task_queue_push(&ready_queue, t);
     }
 
@@ -75,6 +77,8 @@ static int round_robin(uint32_t tick)
 
     if (current_task() && current_task()->state == TASK_STATE_RUNNING)
     {
+        if (current_task()->state != TASK_STATE_CREATED)
+            current_task()->state = TASK_STATE_RUNNING;
         task_queue_push(&ready_queue, current_task());
         set_current_task(NULL);
     }
@@ -82,7 +86,6 @@ static int round_robin(uint32_t tick)
     next = task_queue_pop(&ready_queue);
     if (!next)
     {
-        dbgprintf("Out of tasks\n");
         PANIC();
         return -1;
     }
@@ -126,6 +129,8 @@ static int round_robin(uint32_t tick)
             break;
 
         default:
+            if (next->state != TASK_STATE_CREATED)
+                next->state = TASK_STATE_RUNNING;
             task_queue_push(&ready_queue, next);
             break;
         }
@@ -133,7 +138,6 @@ static int round_robin(uint32_t tick)
         next = task_queue_pop(&ready_queue);
         if (!next)
         {
-            dbgprintf("Out of tasks\n");
             PANIC();
             return -1;
         }
@@ -156,21 +160,22 @@ static int round_robin(uint32_t tick)
 static uint8_t cleaner_is_initialized = 0;
 static void kthread_task_cleaner(void)
 {
-    dbgprintf("I'm cleaning?\n");
     if (cleaner_is_initialized)
         scheduler_exit();
     cleaner_is_initialized = 1;
 
     while (cleaner_is_initialized)
     {
-        task_t* task = task_queue_peek(&zombie_queue);
-        if(task == NULL){
+        task_t *task = task_queue_peek(&zombie_queue);
+        if (task == NULL)
+        {
             __asm__ volatile("hlt");
             continue;
         }
 
         task = task_queue_pop(&zombie_queue);
-        if(task != NULL){
+        if (task != NULL)
+        {
             task_cleanup(task->pid);
             scheduler_yield();
         }
@@ -209,6 +214,8 @@ int scheduler_add(task_t *task)
     if (task == NULL)
         return -1;
 
+    if (task->state != TASK_STATE_CREATED)
+        task->state = TASK_STATE_RUNNING;
     task_queue_push(&ready_queue, task);
 
     return 0;
@@ -221,19 +228,22 @@ int scheduler_yield(void)
 
 int scheduler_sleep(uint32_t ms)
 {
-    uint32_t tick_now = programable_interval_timer_get_tick();
-    uint32_t hz = programable_interval_timer_get_hz();
+    uint32_t tick_now = 0;
+    INTERRUPT_SAFE_BLOCK({
+        tick_now = programable_interval_timer_get_tick();
+        uint32_t hz = programable_interval_timer_get_hz();
 
-    uint32_t ticks_to_sleep = (ms * hz) / 1000;
-    if (ticks_to_sleep == 0)
-        ticks_to_sleep = 1;
+        uint32_t ticks_to_sleep = (ms * hz) / 1000;
+        if (ticks_to_sleep == 0)
+            ticks_to_sleep = 1;
 
-    current_task()->wake_tick = tick_now + ticks_to_sleep;
-    current_task()->state = TASK_STATE_SLEEPING;
-    sleep_queue_push(&sleep_queue, current_task());
-
+        current_task()->wake_tick = tick_now + ticks_to_sleep;
+        current_task()->state = TASK_STATE_SLEEPING;
+        sleep_queue_push(&sleep_queue, current_task());
+    });
     return scheduler_schedule(NULL, tick_now);
 }
+REGISTER_SYSCALL(SYSCALLS_SLEEP, scheduler_sleep);
 
 task_t *scheduler_consume(void)
 {
@@ -259,6 +269,7 @@ int scheduler_exit(void)
 
     return 0;
 }
+REGISTER_SYSCALL(SYSCALLS_EXIT, scheduler_exit);
 
 void _Noreturn kthread_entry(int argc, char *args[])
 {
