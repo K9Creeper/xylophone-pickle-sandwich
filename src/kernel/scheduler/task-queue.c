@@ -8,7 +8,7 @@ void task_queue_init(task_queue_t *queue)
     queue->head = NULL;
     queue->tail = NULL;
     queue->size = 0;
-
+    
     spinlock_init(&queue->lock);
 }
 

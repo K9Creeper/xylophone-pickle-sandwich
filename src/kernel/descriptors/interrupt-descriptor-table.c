@@ -9,7 +9,7 @@
 interrupt_descriptor_table_entry_t pIDT[KERNEL_DESCRIPTORS_IDT_ENTRYCOUT];
 interrupt_descriptor_table_ptr_t _pIDT;
 
-// interrupt-descriptor-table.s
+// @file interrupt-descriptor-table.s
 extern void _idt_load(void);
 
 void kernel_interrupt_descriptor_table_init(void)

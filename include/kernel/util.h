@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 
-// kernel-main.c
+// @file kernel-main.c
 extern int system_interrupt_disable_counter;
 
 #define DISABLE_INTERRUPTS()            \
@@ -38,7 +38,7 @@ extern int system_interrupt_disable_counter;
 #define REGISTER_LOW_MEMORY_VARIABLE(type, name) \
     static type __attribute__((used, section(".lowmem"))) name
 
-// kernel-memory.c
+// @file kernel-memory.c
 void* kernel_malloc(uint32_t size);
 void  kernel_free(void* ptr);
 void* kernel_amalloc(uint32_t size);

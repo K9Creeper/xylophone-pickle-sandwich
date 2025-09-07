@@ -33,6 +33,8 @@ extern uint8_t ordered_array_insert(ordered_array_t* ordered_array, type_t item)
 
 extern void ordered_array_remove(ordered_array_t* ordered_array, uint32_t index);
 
+extern void ordered_array_clear(ordered_array_t* ordered_array);
+
 static inline uint32_t ordered_array_size(ordered_array_t* oa) {
     return oa ? oa->size : (uint32_t)-1;
 }

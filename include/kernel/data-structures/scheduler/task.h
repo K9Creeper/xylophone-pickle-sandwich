@@ -8,6 +8,10 @@
 
 #include <kernel/data-structures/memory-management/paging-manager.h>
 #include <kernel/data-structures/memory-management/heap-manager.h>
+#include <kernel/data-structures/memory-management/allocation-table.h>
+
+#define TASK_NAME_LENGTH 32
+#define TASK_STACK_SIZE 0x2000
 
 typedef enum task_state_e
 {
@@ -45,24 +49,30 @@ typedef struct task_context_s
 typedef struct task_s
 {
     task_context_t ctx;   // 0 (size is 148)
-    uint32_t ds;          // 148
-    uint32_t cs;          // 152
-    uint32_t kesp;        // 156
-    uint32_t kebp;        // 160
-    uint32_t thread_eip;  // 164
+    int args;             // 148
+    char **argv;          // 152
+    uint32_t ds;          // 156
+    uint32_t cs;          // 160
+    uint32_t kesp;        // 164
+    uint32_t kebp;        // 168
+    uintptr_t thread_eip; // 172
 
     task_state_t state;
     task_mode_t mode;
     
     uint32_t stackptr;
     uint32_t physical_cr3;
-    paging_manager_t *paging_manger;
-    heap_manager_t *heap_manger;
+    paging_manager_t *paging_manager;
+    heap_manager_t *heap_manager;
+    allocation_table_t thread_allocation_table;
 
     uint32_t wake_tick;
 
     // reserved for implementation of filesystem
     uint32_t reserved;
+
+    char name[TASK_NAME_LENGTH];
+    uint16_t pid;
 
     struct task_s *parent;
     struct task_s *next;

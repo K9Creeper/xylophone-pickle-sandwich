@@ -19,7 +19,7 @@
 global_descriptor_table_entry_t pGDT[KERNEL_DESCRIPTORS_GDT_ENTRYCOUT];
 global_descriptor_table_ptr_t _pGDT;
 
-// global-descriptor-table.s
+// @file global-descriptor-table.s
 extern void _gdt_flush(void);
 
 void kernel_global_descriptor_set_gate(int index, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity);

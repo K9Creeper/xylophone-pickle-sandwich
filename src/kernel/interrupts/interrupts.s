@@ -69,7 +69,7 @@ IR_NO_ERR 47
 
 IR_NO_ERR 128
 
-## interrupts.c
+## @file interrupts.c
 .extern ir_handler
 ir_common_stub:
     pusha

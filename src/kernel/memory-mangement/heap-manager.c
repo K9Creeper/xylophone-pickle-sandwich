@@ -76,7 +76,7 @@ extern void heap_manager_init(heap_manager_t *heap, uint32_t start_address, uint
     hole->is_hole = 1;
 
     ordered_array_insert(&heap->heap_array, hole);
-    
+
     heap->status = HEAP_INITIALIZED;
 }
 
@@ -120,6 +120,38 @@ void heap_manager_free(heap_manager_t *heap, uint32_t address)
     {
         unallocate(heap, address);
     }
+}
+
+void heap_manager_free_all(heap_manager_t *heap)
+{
+    if (heap->status != HEAP_INITIALIZED)
+        return;
+
+    uint32_t current_size = heap->end_address - heap->start_address;
+    if (current_size > HEAP_MIN_SIZE)
+    {
+        for (uint32_t addr = heap->start_address + HEAP_MIN_SIZE;
+             addr < heap->end_address;
+             addr += PAGE_SIZE)
+        {
+            paging_manager_free_single(heap->paging_manager, addr, 1);
+        }
+    }
+
+    heap->end_address = heap->start_address + HEAP_MIN_SIZE;
+
+    ordered_array_clear(&heap->heap_array);
+
+    heap_header_t *hole = (heap_header_t *)heap->start_address;
+    hole->size = HEAP_MIN_SIZE;
+    hole->magic = HEAP_MAGIC;
+    hole->is_hole = 1;
+
+    heap_footer_t *footer = (heap_footer_t *)(heap->end_address - sizeof(heap_footer_t));
+    footer->header = hole;
+    footer->magic = HEAP_MAGIC;
+
+    ordered_array_insert(&heap->heap_array, (type_t)hole);
 }
 
 static int find_smallest_hole(heap_manager_t *heap, uint32_t size, uint8_t should_align)

@@ -55,3 +55,8 @@ void ordered_array_remove(ordered_array_t* oa, uint32_t index) {
     }
     oa->size--;
 }
+
+void ordered_array_clear(ordered_array_t* oa){
+    memset((uint8_t*)oa->array, 0, oa->max_size);
+    oa->size = 0;
+}

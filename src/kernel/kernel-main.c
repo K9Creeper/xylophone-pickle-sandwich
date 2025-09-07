@@ -8,10 +8,12 @@
 #include <kernel/memory-management/heap-manager.h>
 #include <kernel/memory-management/paging-manager.h>
 #include <kernel/memory-management/physical-memory-manager.h>
+#include <kernel/data-structures/kthread/kthread.h>
 
 #include "debug/serial-com1.h"
 #include "../multiboot2/multiboot2.h"
 #include "descriptors/global-descriptor-table.h"
+#include "descriptors/task-state-segment.h"
 #include "descriptors/interrupt-descriptor-table.h"
 #include "interrupts/interrupts.h"
 #include "bios32/bios32.h"
@@ -19,6 +21,9 @@
 #include "drivers/pic-8259/pic-8259.h"
 #include "drivers/programable-interval-timer/programable-interval-timer.h"
 #include "drivers/vesa/vesa.h"
+#include "scheduler/task.h"
+#include "scheduler/scheduler.h"
+#include "kthread/kthread.h"
 
 int system_interrupt_disable_counter = 0;
 kernel_context_t *kernel_context = &(kernel_context_t){};
@@ -50,6 +55,10 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// Initialize Descriptor Tables
     kernel_global_descriptor_table_init();
     kernel_global_descriptor_table_install();
+    
+    uint32_t esp;
+    __asm__ volatile("mov %%esp, %0" : "=r"(esp));
+    kernel_task_state_segment_int(5, 0x10, esp);
 
     kernel_interrupt_descriptor_table_init();
     pic_8259_remap();
@@ -71,7 +80,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// -------------------
     /// Initialize System Calls
     syscalls_init();
-
+    
     /// -------------------
     /// Initialize Memory Management
     heap_manager_bootstrap(&kernel_context->heap_manager, (uint32_t)(&__end_of_kernel));
@@ -143,7 +152,26 @@ void kernel_main(uint32_t magic, uint32_t addr)
         if(selected_mode + 1 >= mode_count) { selected_mode = (uint16_t)-1; goto vesa_panic; }
     }
 
+    task_init();
+    scheduler_init();
     
+    programable_interval_timer_init(500);
+    programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
+
+    kthread_start("aids", 0, NULL);
 
     ENABLE_INTERRUPTS();
+
+
 }
+
+static void aids(void){
+    dbgprintf("I'm the aids spreader\n");
+    while(1){
+        if(programable_interval_timer_get_tick() % programable_interval_timer_get_hz() == 0)
+            dbgprintf("I'm spreading aids\n");
+        __asm__ volatile("hlt");
+    }
+    scheduler_exit();
+}
+REGISTER_KTHREAD("aids", aids);
