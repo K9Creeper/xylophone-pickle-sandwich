@@ -55,7 +55,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// Initialize Descriptor Tables
     kernel_global_descriptor_table_init();
     kernel_global_descriptor_table_install();
-    
+
     uint32_t esp;
     __asm__ volatile("mov %%esp, %0" : "=r"(esp));
     kernel_task_state_segment_int(5, 0x10, esp);
@@ -65,7 +65,6 @@ void kernel_main(uint32_t magic, uint32_t addr)
     kernel_interrupts_init();
     kernel_interrupt_descriptor_table_finalize();
 
-    
     /// -------------------
     /// Get Physical Memory Info
     multiboot2_get_physical_memory_size(addr, &kernel_context->memory_info.reserved_memory);
@@ -80,7 +79,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// -------------------
     /// Initialize System Calls
     syscalls_init();
-    
+
     /// -------------------
     /// Initialize Memory Management
     heap_manager_bootstrap(&kernel_context->heap_manager, (uint32_t)(&__end_of_kernel));
@@ -146,39 +145,22 @@ void kernel_main(uint32_t magic, uint32_t addr)
     {
         if (modes[selected_mode].info.bpp == 16)
         {
-            if(vesa_set_mode(modes[selected_mode].number)) continue;
+            if (vesa_set_mode(modes[selected_mode].number))
+                continue;
             break;
         }
-        if(selected_mode + 1 >= mode_count) { selected_mode = (uint16_t)-1; goto vesa_panic; }
+        if (selected_mode + 1 >= mode_count)
+        {
+            selected_mode = (uint16_t)-1;
+            goto vesa_panic;
+        }
     }
 
     task_init();
     scheduler_init();
-    
+
     programable_interval_timer_init(500);
     programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
 
-    kthread_start("aids", 0, NULL);
-    kthread_start("idle", 0, NULL);
-    
     ENABLE_INTERRUPTS();
 }
-
-#include <../lib/syscalls.h>
-
-static void kthread_idle(void){
-    while(1){
-        __asm__ volatile("hlt");
-    }
-}
-REGISTER_KTHREAD("idle", kthread_idle);
-
-static void aids(void){
-    dbgprintf("I'm the aids spreader\n");
-    while(1){
-        dbgprintf("I'm spreading aids\n");
-        sleep(1000);
-    }
-    exit();
-}
-REGISTER_KTHREAD("aids", aids);

@@ -12,7 +12,10 @@ typedef enum syscalls_e
 {
     SYSCALLS_TICK,
     SYSCALLS_EXIT,
-    SYSCALLS_SLEEP
+    SYSCALLS_SLEEP,
+
+    SYSCALLS_MALLOC,
+    SYSCALLS_FREE
 } syscalls_t;
 #endif
 

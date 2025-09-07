@@ -42,6 +42,25 @@ static uint8_t is_initalized = 0;
 extern void _task_restore_context(task_t *);
 extern void _task_save_context(task_t *);
 
+static inline void enqueue_ready(task_t *t)
+{
+    if (t->state != TASK_STATE_CREATED)
+        t->state = TASK_STATE_RUNNING;
+    task_queue_push(&ready_queue, t);
+}
+
+static inline void enqueue_zombie(task_t *t)
+{
+    t->state = TASK_STATE_ZOMBIE;
+    task_queue_push(&zombie_queue, t);
+}
+
+static inline void enqueue_sleeper(task_t *t)
+{
+    t->state = TASK_STATE_SLEEPING;
+    sleep_queue_push(&sleep_queue, t);
+}
+
 void scheduler_init(void)
 {
     if (is_initalized)
@@ -55,6 +74,7 @@ void scheduler_init(void)
     sleep_queue_init(&sleep_queue, (task_t *)sleep_array_storage, MAX_SLEEP_TASKS);
 
     kthread_start("kthread_task_cleaner", 0, NULL);
+    kthread_start("kthread_idle", 0, NULL);
 
     is_initalized = 1;
 }
@@ -68,18 +88,14 @@ static int round_robin(uint32_t tick)
             break;
 
         sleep_queue_pop(&sleep_queue);
-        if (t->state != TASK_STATE_CREATED)
-            t->state = TASK_STATE_RUNNING;
-        task_queue_push(&ready_queue, t);
+        enqueue_ready(t);
     }
 
     task_t *next;
 
     if (current_task() && current_task()->state == TASK_STATE_RUNNING)
     {
-        if (current_task()->state != TASK_STATE_CREATED)
-            current_task()->state = TASK_STATE_RUNNING;
-        task_queue_push(&ready_queue, current_task());
+        enqueue_ready(current_task());
         set_current_task(NULL);
     }
 
@@ -108,13 +124,11 @@ static int round_robin(uint32_t tick)
         switch (next->state)
         {
         case TASK_STATE_ZOMBIE:
-            next->state = TASK_STATE_ZOMBIE;
-            task_queue_push(&zombie_queue, next);
+            enqueue_zombie(next);
             break;
 
         case TASK_STATE_SLEEPING:
-            next->state = TASK_STATE_SLEEPING;
-            sleep_queue_push(&sleep_queue, next);
+            enqueue_sleeper(next);
             break;
 
         case TASK_STATE_CREATED:
@@ -129,9 +143,7 @@ static int round_robin(uint32_t tick)
             break;
 
         default:
-            if (next->state != TASK_STATE_CREATED)
-                next->state = TASK_STATE_RUNNING;
-            task_queue_push(&ready_queue, next);
+            enqueue_ready(next);
             break;
         }
 
@@ -156,34 +168,6 @@ static int round_robin(uint32_t tick)
 
     return 0;
 }
-
-static uint8_t cleaner_is_initialized = 0;
-static void kthread_task_cleaner(void)
-{
-    if (cleaner_is_initialized)
-        scheduler_exit();
-    cleaner_is_initialized = 1;
-
-    while (cleaner_is_initialized)
-    {
-        task_t *task = task_queue_peek(&zombie_queue);
-        if (task == NULL)
-        {
-            __asm__ volatile("hlt");
-            continue;
-        }
-
-        task = task_queue_pop(&zombie_queue);
-        if (task != NULL)
-        {
-            task_cleanup(task->pid);
-            scheduler_yield();
-        }
-    }
-
-    scheduler_exit();
-}
-REGISTER_KTHREAD("kthread_task_cleaner", kthread_task_cleaner);
 
 int scheduler_schedule(registers_t *__reg_ /*unused*/, uint32_t tick)
 {
@@ -214,9 +198,7 @@ int scheduler_add(task_t *task)
     if (task == NULL)
         return -1;
 
-    if (task->state != TASK_STATE_CREATED)
-        task->state = TASK_STATE_RUNNING;
-    task_queue_push(&ready_queue, task);
+    enqueue_ready(task);
 
     return 0;
 }
@@ -238,8 +220,7 @@ int scheduler_sleep(uint32_t ms)
             ticks_to_sleep = 1;
 
         current_task()->wake_tick = tick_now + ticks_to_sleep;
-        current_task()->state = TASK_STATE_SLEEPING;
-        sleep_queue_push(&sleep_queue, current_task());
+        enqueue_sleeper(current_task());
     });
     return scheduler_schedule(NULL, tick_now);
 }
@@ -283,3 +264,68 @@ void _Noreturn kthread_entry(int argc, char *args[])
 
     PANIC();
 }
+
+static void *syscall_malloc(int size)
+{
+    if(size <= 0) return NULL;
+    
+    void *ret = NULL;
+    INTERRUPT_SAFE_BLOCK({
+        if (current_task() == NULL)
+            break;
+        
+        ret = heap_manager_malloc(current_task()->heap_manager, size, 0, NULL);
+        allocation_table_add(&current_task()->thread_allocation_table, (uint32_t)ret, size);
+    });
+    return ret;
+}
+REGISTER_SYSCALL(SYSCALLS_MALLOC, syscall_malloc);
+
+static void syscall_free(void *address)
+{
+    INTERRUPT_SAFE_BLOCK({
+        if (current_task() == NULL)
+            break;
+        heap_manager_free(current_task()->heap_manager, (uint32_t)address);
+        allocation_table_remove(&current_task()->thread_allocation_table, (uint32_t)address);
+    });
+}
+REGISTER_SYSCALL(SYSCALLS_FREE, syscall_free);
+
+static uint8_t cleaner_is_initialized = 0;
+static void kthread_task_cleaner(void)
+{
+    if (cleaner_is_initialized)
+        scheduler_exit();
+    cleaner_is_initialized = 1;
+
+    while (cleaner_is_initialized)
+    {
+        task_t *task = task_queue_peek(&zombie_queue);
+        if (task == NULL)
+        {
+            __asm__ volatile("hlt");
+            continue;
+        }
+
+        task = task_queue_pop(&zombie_queue);
+        if (task != NULL)
+        {
+            task_cleanup(task->pid);
+            scheduler_yield();
+        }
+    }
+
+    scheduler_exit();
+}
+REGISTER_KTHREAD("kthread_task_cleaner", kthread_task_cleaner);
+
+static void kthread_idle(void)
+{
+    while (1)
+    {
+        scheduler_yield();
+    }
+    scheduler_exit();
+}
+REGISTER_KTHREAD("kthread_idle", kthread_idle);
