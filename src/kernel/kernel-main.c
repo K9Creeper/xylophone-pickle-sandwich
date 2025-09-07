@@ -159,17 +159,26 @@ void kernel_main(uint32_t magic, uint32_t addr)
     programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
 
     kthread_start("aids", 0, NULL);
-
+    kthread_start("idle", 0, NULL);
+    
     ENABLE_INTERRUPTS();
 }
+
+#include <../lib/syscalls.h>
+
+static void kthread_idle(void){
+    while(1){
+        __asm__ volatile("hlt");
+    }
+}
+REGISTER_KTHREAD("idle", kthread_idle);
 
 static void aids(void){
     dbgprintf("I'm the aids spreader\n");
     while(1){
-        if(programable_interval_timer_get_tick() % programable_interval_timer_get_hz() == 0)
-            dbgprintf("I'm spreading aids\n");
-        __asm__ volatile("hlt");
+        dbgprintf("I'm spreading aids\n");
+        sleep(1000);
     }
-    scheduler_exit();
+    exit();
 }
 REGISTER_KTHREAD("aids", aids);

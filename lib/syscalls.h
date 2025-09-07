@@ -12,6 +12,8 @@
 typedef enum syscalls_e
 {
     SYSCALLS_TICK,
+    SYSCALLS_EXIT,
+    SYSCALLS_SLEEP
 } syscalls_t;
 #endif
 
@@ -45,6 +47,14 @@ static inline int _syscall(syscalls_t i, int arg1, int arg2, int arg3)
 
 static inline uint32_t get_system_tick_count(void){
     return SYSCALL_0(SYSCALLS_TICK);
+}
+
+static inline void exit(void){
+    SYSCALL_0(SYSCALLS_EXIT);
+}
+
+static inline void sleep(uint32_t ms){
+    SYSCALL_1(SYSCALLS_SLEEP, ms);
 }
 
 #endif
