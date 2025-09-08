@@ -265,6 +265,13 @@ void _Noreturn kthread_entry(int argc, char *args[])
     PANIC();
 }
 
+static int syscall_get_proccess_id(void){
+    if(current_task() == NULL) return -1;
+
+    return current_task()->pid;
+}
+REGISTER_SYSCALL(SYSCALLS_PID, syscall_get_proccess_id);
+
 static void *syscall_malloc(int size)
 {
     if(size <= 0) return NULL;

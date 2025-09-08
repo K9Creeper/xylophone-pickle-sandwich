@@ -170,13 +170,15 @@ int vesa_set_mode(uint16_t mode)
         kernel_context->video_state.lfb = current_mode.info.physbase;
         kernel_context->video_state.width = current_mode.info.width;
         kernel_context->video_state.height = current_mode.info.height;
-        kernel_context->video_state.bpp = current_mode.info.bpp;
+        kernel_context->video_state.bits_per_pixel = current_mode.info.bpp;
+        kernel_context->video_state.bytes_per_pixel = current_mode.info.bpp / 8;
         kernel_context->video_state.pitch = current_mode.info.pitch;
 
         const uint32_t lfb = current_mode.info.physbase;
         const uint32_t lfb_size = current_mode.info.width *
                                   current_mode.info.height *
                                   (current_mode.info.bpp / 8);
+        kernel_context->video_state.size = lfb_size;
         const uint32_t lfb_max = lfb + lfb_size;
 
         paging_manager_identity_allocate_range(&kernel_context->paging_manager, lfb, lfb_max, 1, 1);

@@ -77,7 +77,7 @@ typedef struct task_s
     struct task_s *parent;
     struct task_s *next;
     struct task_s *prev;
-} __attribute__((__packed__)) task_t;
+} task_t;
 
 typedef void (*task_entry_routine_t)(void);
 

@@ -15,8 +15,13 @@ typedef enum syscalls_e
     SYSCALLS_EXIT,
     SYSCALLS_SLEEP,
     
+    SYSCALLS_PID,
+
     SYSCALLS_MALLOC,
-    SYSCALLS_FREE
+    SYSCALLS_FREE,
+
+    SYSCALLS_WS_SEND_MSG,
+    SYSCALLS_WS_GET_MSG,
 } syscalls_t;
 #endif
 
@@ -60,12 +65,20 @@ static inline void sleep(uint32_t ms){
     SYSCALL_1(SYSCALLS_SLEEP, (int)ms);
 }
 
+static inline int get_proccess_id(void){
+    return SYSCALL_0(SYSCALLS_PID);
+}
+
 static inline void* malloc(int size){
     return (void*)SYSCALL_1(SYSCALLS_MALLOC, size);
 }
 
 static inline void free(void* address){
     SYSCALL_1(SYSCALLS_FREE, address);
+}
+
+static inline int ws_send_message(void* msg){
+    return SYSCALL_1(SYSCALLS_WS_SEND_MSG, msg);
 }
 
 #endif

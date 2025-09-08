@@ -24,6 +24,7 @@
 #include "scheduler/task.h"
 #include "scheduler/scheduler.h"
 #include "kthread/kthread.h"
+#include "window-server/window-server.h"
 
 int system_interrupt_disable_counter = 0;
 kernel_context_t *kernel_context = &(kernel_context_t){};
@@ -143,7 +144,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
     uint16_t selected_mode = 0;
     for (selected_mode = 0; selected_mode < mode_count; selected_mode++)
     {
-        if (modes[selected_mode].info.bpp == 16)
+        if (modes[selected_mode].info.bpp == 16 && modes[selected_mode].info.width > 600)
         {
             if (vesa_set_mode(modes[selected_mode].number))
                 continue;
@@ -156,11 +157,63 @@ void kernel_main(uint32_t magic, uint32_t addr)
         }
     }
 
+    /// -------------------
+    /// Initialize Multitasking
+
     task_init();
     scheduler_init();
 
     programable_interval_timer_init(500);
     programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
 
+    if(window_server_init()){
+        dbgprintf("WINDOWS ARE NOT SUPPORTED\n");
+        PANIC();
+    }
+
+    kthread_start("test", 0, NULL);
+    kthread_start("test2", 0, NULL);
+
     ENABLE_INTERRUPTS();
 }
+
+#include <../lib/syscalls-lib.h>
+#include <../lib/window-lib.h>
+static void test_windows(void){
+    ws_msg_t msg = (ws_msg_t){
+        .type = MSG_CREATE_WINDOW,
+        .w = 100,
+        .h = 100,
+        .x = 100,
+        .y = 100
+    };
+    int window_id = ws_send_message(&msg);
+    msg.window_id = window_id;
+    msg.type = MSG_DRAW_READY;
+    while(1){
+        ws_send_message(&msg);
+        __asm__ volatile("hlt");
+    }
+
+    exit();
+}
+REGISTER_KTHREAD("test", test_windows);
+static void test_windows2(void){
+    ws_msg_t msg = (ws_msg_t){
+        .type = MSG_CREATE_WINDOW,
+        .w = 50,
+        .h = 100,
+        .x = 200,
+        .y = 150
+    };
+    int window_id = ws_send_message(&msg);
+    msg.window_id = window_id;
+    msg.type = MSG_DRAW_READY;
+    while(1){
+        ws_send_message(&msg);
+        __asm__ volatile("hlt");
+    }
+
+    exit();
+}
+REGISTER_KTHREAD("test2", test_windows2);
