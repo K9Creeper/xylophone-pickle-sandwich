@@ -165,55 +165,8 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     programable_interval_timer_init(500);
     programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
-
-    if(window_server_init()){
-        dbgprintf("WINDOWS ARE NOT SUPPORTED\n");
-        PANIC();
-    }
-
-    kthread_start("test", 0, NULL);
-    kthread_start("test2", 0, NULL);
-
+        
     ENABLE_INTERRUPTS();
 }
 
 #include <../lib/syscalls-lib.h>
-#include <../lib/window-lib.h>
-static void test_windows(void){
-    ws_msg_t msg = (ws_msg_t){
-        .type = MSG_CREATE_WINDOW,
-        .w = 100,
-        .h = 100,
-        .x = 100,
-        .y = 100
-    };
-    int window_id = ws_send_message(&msg);
-    msg.window_id = window_id;
-    msg.type = MSG_DRAW_READY;
-    while(1){
-        ws_send_message(&msg);
-        __asm__ volatile("hlt");
-    }
-
-    exit();
-}
-REGISTER_KTHREAD("test", test_windows);
-static void test_windows2(void){
-    ws_msg_t msg = (ws_msg_t){
-        .type = MSG_CREATE_WINDOW,
-        .w = 50,
-        .h = 100,
-        .x = 200,
-        .y = 150
-    };
-    int window_id = ws_send_message(&msg);
-    msg.window_id = window_id;
-    msg.type = MSG_DRAW_READY;
-    while(1){
-        ws_send_message(&msg);
-        __asm__ volatile("hlt");
-    }
-
-    exit();
-}
-REGISTER_KTHREAD("test2", test_windows2);

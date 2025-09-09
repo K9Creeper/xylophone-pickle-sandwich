@@ -18,10 +18,7 @@ typedef enum syscalls_e
     SYSCALLS_PID,
 
     SYSCALLS_MALLOC,
-    SYSCALLS_FREE,
-
-    SYSCALLS_WS_SEND_MSG,
-    SYSCALLS_WS_GET_MSG,
+    SYSCALLS_FREE
 } syscalls_t;
 #endif
 
@@ -75,10 +72,6 @@ static inline void* malloc(int size){
 
 static inline void free(void* address){
     SYSCALL_1(SYSCALLS_FREE, address);
-}
-
-static inline int ws_send_message(void* msg){
-    return SYSCALL_1(SYSCALLS_WS_SEND_MSG, msg);
 }
 
 #endif

@@ -17,9 +17,7 @@ typedef enum syscalls_e
     SYSCALLS_PID,
 
     SYSCALLS_MALLOC,
-    SYSCALLS_FREE,
-
-    SYSCALLS_WS_SEND_MSG,
+    SYSCALLS_FREE
 } syscalls_t;
 #endif
 
