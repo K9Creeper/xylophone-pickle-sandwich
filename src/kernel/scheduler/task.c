@@ -164,6 +164,8 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
 
     memcpy(task->name, name, strlen(name) + 1);
 
+    task->tgid = task->pid;
+    
     if (argc != 0)
     {
         task->argv = (char **)kernel_calloc(1, sizeof(char *) * argc);

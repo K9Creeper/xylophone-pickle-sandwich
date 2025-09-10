@@ -72,7 +72,8 @@ typedef struct task_s
     uint32_t reserved;
 
     char name[TASK_NAME_LENGTH];
-    uint16_t pid;
+    uint32_t pid;
+    uint32_t tgid;
 
     struct task_s *parent;
     struct task_s *next;

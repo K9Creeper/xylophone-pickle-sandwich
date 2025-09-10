@@ -20,7 +20,7 @@ extern void _handle_syscalls_interrupt(registers_t *frame);
 
 void syscalls_init(void) {
     memset((uint8_t *)syscalls_table, 0, sizeof(syscalls_table));
-
+    
     for (const syscall_entry_t* e = __start_syscalls; e < __stop_syscalls; ++e) {
         syscalls_table[e->num] = e->func;
     }
