@@ -51,6 +51,46 @@ static inline void append_to_buffer(char *buffer, int *index, const char *src) {
     while (*src) buffer[(*index)++] = *src++;
 }
 
+static void ftoa(float val, char *buf, int precision) {
+    if (val < 0) {
+        *buf++ = '-';
+        val = -val;
+    }
+
+    int int_part = (int)val;
+    float frac_part = val - int_part;
+
+    itoa(int_part, buf, 10);
+    while (*buf) buf++;  // Move pointer to end of int part string
+
+    *buf++ = '.';  // decimal point
+
+    // Convert fractional part
+    for (int i = 0; i < precision; i++) {
+        frac_part *= 10;
+    }
+
+    int frac_int = (int)(frac_part + 0.5f);  // rounding
+
+    // Convert fractional part with leading zeros if needed
+    char frac_buf[16];
+    uitoa(frac_int, frac_buf, 10);
+
+    // Add leading zeros if frac_int has fewer digits than precision
+    int frac_len = 0;
+    while (frac_buf[frac_len]) frac_len++;
+
+    for (int i = frac_len; i < precision; i++) {
+        *buf++ = '0';
+    }
+
+    for (int i = 0; i < frac_len; i++) {
+        *buf++ = frac_buf[i];
+    }
+
+    *buf = '\0';
+}
+
 void dbgprintf(const char *format, ...) {
     if (!is_initialized) return;
 
@@ -107,6 +147,11 @@ void dbgprintf(const char *format, ...) {
                 case 's':
                     append_to_buffer(buffer, &buffer_index, va_arg(args, const char *));
                     continue; // skip width padding for strings
+                case 'f': {
+                     double val = va_arg(args, double);
+                    ftoa((float)val, temp, 6);  // 6 decimal places
+                    break;
+                }
                 case '%':
                     temp[0] = '%';
                     temp[1] = '\0';

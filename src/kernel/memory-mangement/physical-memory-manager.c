@@ -11,6 +11,8 @@ void physical_memory_manager_init(physical_memory_manager_t *physical_memory_man
     if (!physical_memory_manager || physical_memory_manager->is_initialized)
         return;
 
+    physical_memory_manager->block_used = 0;
+
     physical_memory_manager->failed = 0;
     physical_memory_manager->failure = failure_handle;
     
@@ -36,7 +38,7 @@ uint32_t physical_memory_manager_allocate_block(physical_memory_manager_t *physi
         return (uint32_t)(-1);
 
     uint32_t free_block;
-
+    
     uint8_t found = physical_memory_manager_get_first_free_block(physical_memory_manager, &free_block);
     if (found)
     {
@@ -44,6 +46,7 @@ uint32_t physical_memory_manager_allocate_block(physical_memory_manager_t *physi
         uint32_t offset = bitmap_offset_from_bit(&physical_memory_manager->bitmap, free_block);
 
         physical_memory_manager->bitmap.array[index] |= (0x1 << offset);
+        physical_memory_manager->block_used++;
 
         return free_block;
     }
@@ -59,6 +62,7 @@ void physical_memory_manager_free_block(physical_memory_manager_t *physical_memo
     uint32_t offset = bitmap_offset_from_bit(&physical_memory_manager->bitmap, block_number);
 
     physical_memory_manager->bitmap.array[index] &= ~(0x1 << offset);
+    physical_memory_manager->block_used--;
 }
 
 uint8_t physical_memory_manager_get_first_free_block(physical_memory_manager_t *physical_memory_manager, uint32_t *out)

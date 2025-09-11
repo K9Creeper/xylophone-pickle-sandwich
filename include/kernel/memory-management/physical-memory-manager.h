@@ -23,4 +23,8 @@ static inline uint8_t physical_memory_manager_is_valid_block(physical_memory_man
     return index < max_entry_count;
 }
 
+static inline double physical_memory_manager_usage(physical_memory_manager_t *physical_memory_manager){
+    return (double)((double)physical_memory_manager->block_used / physical_memory_manager->bitmap.bit_count);
+}
+
 #endif
