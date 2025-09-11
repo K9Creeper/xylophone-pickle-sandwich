@@ -165,7 +165,9 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     programable_interval_timer_init(500);
     programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
+ 
     
+
     ENABLE_INTERRUPTS();
 }
 
