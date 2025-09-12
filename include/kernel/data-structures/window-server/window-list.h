@@ -6,14 +6,12 @@
 
 #include <kernel/data-structures/window-server/window.h>
 
-typedef struct window_list_s{
-    window_t* head;
-    window_t* tail;
-
+typedef struct window_list_s {
     window_t** data;
-
     int size;
     int capacity;
-}window_list_t;
+    int* free_ids;
+    int free_count;
+} window_list_t;
 
 #endif
