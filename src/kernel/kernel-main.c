@@ -24,7 +24,6 @@
 #include "scheduler/task.h"
 #include "scheduler/scheduler.h"
 #include "kthread/kthread.h"
-#include "window-server/window-server.h"
 
 int system_interrupt_disable_counter = 0;
 kernel_context_t *kernel_context = &(kernel_context_t){};
