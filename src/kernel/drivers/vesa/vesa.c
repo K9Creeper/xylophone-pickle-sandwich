@@ -7,7 +7,6 @@
 #include <kernel/util.h>
 
 #include "../../bios32/bios32.h"
-#include <kernel/memory-management/paging-manager.h>
 #include <kernel/data-structures/kernel-context.h>
 
 extern kernel_context_t *kernel_context;
@@ -141,14 +140,6 @@ void vesa_destroy(void)
         {
             if (vesa_modes[i].number != current_mode_number)
                 continue;
-
-            const uint32_t lfb = vesa_modes[i].info.physbase;
-            const uint32_t lfb_size = vesa_modes[i].info.width *
-                                      vesa_modes[i].info.height *
-                                      (vesa_modes[i].info.bpp / 8);
-            const uint32_t lfb_max = lfb + lfb_size;
-
-            paging_manager_free_range(&kernel_context->paging_manager, lfb, lfb_max, 0);
             break;
         }
     }
@@ -174,14 +165,10 @@ int vesa_set_mode(uint16_t mode)
         kernel_context->video_state.bytes_per_pixel = current_mode.info.bpp / 8;
         kernel_context->video_state.pitch = current_mode.info.pitch;
 
-        const uint32_t lfb = current_mode.info.physbase;
         const uint32_t lfb_size = current_mode.info.width *
                                   current_mode.info.height *
                                   (current_mode.info.bpp / 8);
         kernel_context->video_state.size = lfb_size;
-        const uint32_t lfb_max = lfb + lfb_size;
-
-        paging_manager_identity_allocate_range(&kernel_context->paging_manager, lfb, lfb_max, 1, 1);
 
         return 0;
     }
