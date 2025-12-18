@@ -157,6 +157,10 @@ void kernel_main(uint32_t magic, uint32_t addr)
     }
 
     /// -------------------
+    /// Initialize Drive Drivers
+    
+
+    /// -------------------
     /// Initialize Multitasking
 
     task_init();
@@ -164,10 +168,31 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     programable_interval_timer_init(500);
     programable_interval_timer_add_handle((programable_interval_timer_handle_t)scheduler_schedule);
- 
-    
+
+    kthread_start("colin", 0, NULL);    
+    // kthread_start("aids", 0, NULL);  
 
     ENABLE_INTERRUPTS();
 }
 
 #include <../lib/syscalls-lib.h>
+
+// The goat's idle thread
+static void kernel_colin(void){
+    while(1){
+        // dbgprintf("The goat's thread is running\n");
+        __asm__ volatile ("hlt");
+    }
+    exit();
+}
+REGISTER_KTHREAD("colin", kernel_colin);
+
+static void aids(void){
+    dbgprintf("I'm the aids spreader\n");
+    while(1){
+        dbgprintf("I'm spreading aids\n");
+        sleep(1000);
+    }
+    exit();
+}
+REGISTER_KTHREAD("aids", aids);
