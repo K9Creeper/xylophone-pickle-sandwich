@@ -13,4 +13,6 @@ extern int task_cleanup(uint16_t pid);
 
 extern int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char **argv);
 
+extern int task_create_thread_process(task_t* parent, void (*entry)(void), void* arg);
+
 #endif

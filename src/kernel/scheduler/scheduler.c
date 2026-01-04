@@ -81,7 +81,7 @@ void scheduler_init(void)
 
 static int round_robin(uint32_t tick)
 {
-    while (sleep_queue.size > 0)
+    for (;;)
     {
         task_t *t = sleep_queue_peek(&sleep_queue);
         if (!t || t->wake_tick > tick)
@@ -265,8 +265,10 @@ void _Noreturn kthread_entry(int argc, char *args[])
     PANIC();
 }
 
-static int syscall_get_proccess_id(void){
-    if(current_task() == NULL) return -1;
+static int syscall_get_proccess_id(void)
+{
+    if (current_task() == NULL)
+        return -1;
 
     return current_task()->pid;
 }
@@ -274,13 +276,14 @@ REGISTER_SYSCALL(SYSCALLS_PID, syscall_get_proccess_id);
 
 static void *syscall_malloc(int size)
 {
-    if(size <= 0) return NULL;
-    
+    if (size <= 0)
+        return NULL;
+
     void *ret = NULL;
     INTERRUPT_SAFE_BLOCK({
         if (current_task() == NULL)
             break;
-        
+
         ret = heap_manager_malloc(current_task()->heap_manager, size, 0, NULL);
         allocation_table_add(&current_task()->thread_allocation_table, (uint32_t)ret, size);
     });

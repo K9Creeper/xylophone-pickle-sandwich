@@ -20,6 +20,7 @@
 #include "syscalls/syscalls.h"
 #include "drivers/pic-8259/pic-8259.h"
 #include "drivers/programable-interval-timer/programable-interval-timer.h"
+#include "drivers/pci/pci.h"
 #include "drivers/vesa/vesa.h"
 #include "scheduler/task.h"
 #include "scheduler/scheduler.h"
@@ -159,6 +160,12 @@ void kernel_main(uint32_t magic, uint32_t addr)
     /// -------------------
     /// Initialize Drive Drivers
     
+    // ! TEST ONLY !
+    //
+    for (uint32_t bus = 0; bus < 256; bus++)
+    {
+        pci_scan_bus(bus);
+    }
 
     /// -------------------
     /// Initialize Multitasking

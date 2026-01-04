@@ -6,10 +6,13 @@
 #include <kernel/util.h>
 #include <memory.h>
 #include <string.h>
+#include <spinlock.h>
 
 #include <kernel/data-structures/kernel-context.h>
 #include <kernel/memory-management/paging-manager.h>
 #include <kernel/memory-management/heap-manager.h>
+
+#include <kernel/scheduler/user-stack-manager.h>
 
 #include "scheduler.h"
 
@@ -17,8 +20,11 @@
 
 static int task_count = 0;
 static task_t task_table[TASKS_MAX];
+static spinlock_t task_table_lock;
 
-extern kernel_context_t* kernel_context;
+static user_stack_manager_t user_stack_manager;
+
+extern kernel_context_t *kernel_context;
 
 extern void _task_start(task_t *);
 
@@ -26,8 +32,9 @@ extern void kthread_entry(int argc, char *args[]);
 
 static task_t *get_free_task(void)
 {
-    int i;
-    for (i = 0; i < TASKS_MAX; i++)
+    spinlock_lock(&task_table_lock);
+
+    for (int i = 0; i < TASKS_MAX; i++)
     {
         if (task_table[i].state == TASK_STATE_STOPPED)
         {
@@ -40,10 +47,12 @@ static task_t *get_free_task(void)
             task->paging_manager = NULL;
             task->heap_manager = NULL;
 
+            spinlock_unlock(&task_table_lock);
             return task;
         }
     }
 
+    spinlock_unlock(&task_table_lock);
     return NULL;
 }
 
@@ -60,7 +69,7 @@ static int init_kernel_stack(task_t *task)
 
     // Stack data
     task->ctx.ebp = task->ctx.esp = (stack + TASK_STACK_SIZE) & ~0xF;
-    ;
+
     task->kebp = task->kesp = task->ctx.esp;
 
     // Orginial (bottom)
@@ -69,14 +78,37 @@ static int init_kernel_stack(task_t *task)
     return 0;
 }
 
+static int init_user_stack(task_t *task, uint32_t* stack_base, uint32_t* stack_top) {
+    if ((void *)task == NULL)
+        return -1;
+
+    if(init_kernel_stack(task))
+        return -1;
+
+    int slot_index = user_stack_alloc(&user_stack_manager, stack_base, stack_top);
+    if (slot_index < 0)
+        return -1;
+        
+    task->ctx.ebp = task->ctx.esp = (uint32_t)stack_top;          
+    
+    return 0;
+}
+
 void task_init(void)
 {
-    for (int i = 0; i < TASKS_MAX; i++)
-    {
-        task_table[i].state = TASK_STATE_STOPPED;
-        task_table[i].pid = (uint16_t)-1;
-        task_table[i].next = task_table[i].prev = task_table[i].parent = NULL;
-    }
+    INTERRUPT_SAFE_BLOCK({
+        spinlock_init(&task_table_lock);
+        spinlock_lock(&task_table_lock);
+        for (int i = 0; i < TASKS_MAX; i++)
+        {
+            task_table[i].state = TASK_STATE_STOPPED;
+            task_table[i].pid = (uint16_t)-1;
+            task_table[i].next = task_table[i].prev = task_table[i].parent = NULL;
+        }
+        spinlock_unlock(&task_table_lock);
+    
+        user_stack_manager_init(&user_stack_manager);
+    })
 }
 
 void _Noreturn task_start_impl(task_t *task)
@@ -90,20 +122,29 @@ void _Noreturn task_start_impl(task_t *task)
 
 int task_cleanup(uint16_t pid)
 {
-    if (pid == (uint16_t)-1 || pid > TASKS_MAX)
+    if (pid == (uint16_t)-1 || pid >= TASKS_MAX)
         return -1;
+    task_t *task;
 
-    task_t *task = &task_table[pid];
+    INTERRUPT_SAFE_BLOCK({
+        spinlock_lock(&task_table_lock);
+        task = &task_table[pid];
 
-    for (int i = 0; i < TASKS_MAX; i++)
-    {
-        if (task_table[i].parent == task && task_table[i].mode == TASK_MODE_THREAD)
+        for (int i = 0; i < TASKS_MAX; i++)
         {
-            task_table[i].state = TASK_STATE_ZOMBIE;
+            if (task_table[i].parent == task && task_table[i].mode == TASK_MODE_THREAD)
+            {
+                task_table[i].state = TASK_STATE_ZOMBIE;
+            }
         }
-    }
+        spinlock_unlock(&task_table_lock);
+    })
 
-    if (task->mode != TASK_MODE_PROCESS)
+    if(task->mode == TASK_MODE_PROCESS)
+    {
+        heap_manager_free_all(task->heap_manager);
+    }
+    else
     {
         for (int i = 0; i < ALLOCATION_MAX_COUNT; i++)
         {
@@ -114,12 +155,12 @@ int task_cleanup(uint16_t pid)
                 task->thread_allocation_table.data[i].address = 0;
             }
         }
-    }else{
-        heap_manager_free_all(task->heap_manager);
     }
+    
 
     INTERRUPT_SAFE_BLOCK({
-        kernel_free((void *)task->stackptr);
+        if(task->stackptr)
+            kernel_free((void *)task->stackptr);
         task_count--;
 
         memset((uint8_t *)task, 0, sizeof(task_t));
@@ -127,6 +168,8 @@ int task_cleanup(uint16_t pid)
         task->pid = (uint16_t)-1;
         task->next = task->prev = task->parent = NULL;
     });
+
+    return 0;
 }
 
 int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char **argv)
@@ -134,7 +177,7 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
     DISABLE_INTERRUPTS();
 
     task_t *task = get_free_task();
-    
+
     if (task == NULL)
     {
         ENABLE_INTERRUPTS();
@@ -165,7 +208,7 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
     memcpy(task->name, name, strlen(name) + 1);
 
     task->tgid = task->pid;
-    
+
     if (argc != 0)
     {
         task->argv = (char **)kernel_calloc(1, sizeof(char *) * argc);
@@ -190,7 +233,8 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
         task->args = argc;
     }
 
-    if(scheduler_add(task)){
+    if (scheduler_add(task))
+    {
         // TODO: Handle this....
         //
     }
@@ -201,3 +245,53 @@ int task_create_kthread(task_entry_routine_t entry, char *name, int argc, char *
 
     return task->pid;
 }
+
+int task_create_thread_process(task_t* parent, void (*entry)(void), void* arg){
+    DISABLE_INTERRUPTS();
+
+    task_t *task = get_free_task();
+
+    if (task == NULL)
+    {
+        ENABLE_INTERRUPTS();
+        return -1;
+    }
+
+    uint32_t stack_base, stack_top;
+
+    if(init_user_stack(task, &stack_base, &stack_top))
+    {
+        ENABLE_INTERRUPTS();
+        return -1;
+    }
+
+    task->mode = TASK_MODE_THREAD;
+    
+    task->parent = parent;
+    task->tgid = parent->tgid;
+    memcpy(task->name, parent->name, strlen(parent->name) + 1);
+
+    task->ctx.eip = USER_PROGRAM_BASE;
+    task->thread_eip = (uintptr_t)entry;
+
+    task->args = (int)arg;
+
+    task->paging_manager = parent->paging_manager;
+    task->heap_manager   = parent->heap_manager;
+    task->physical_cr3   = parent->physical_cr3;
+
+    paging_manager_allocate_range(task->paging_manager, stack_base, stack_top, 0, 1);
+
+    if (scheduler_add(task))
+    {
+        // TODO: Handle this....
+        //
+    }
+
+    task_count++;
+
+    ENABLE_INTERRUPTS();
+
+    return task->pid;
+}  
+

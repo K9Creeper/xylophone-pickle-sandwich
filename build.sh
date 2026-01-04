@@ -119,50 +119,50 @@ if grub-file --is-x86-multiboot2 build/build.bin; then
     echo -e "\033[1mCreating GRUB-bootable disk image\033[0m"
     echo -e "--------------------------------------"
 
-    # 16 MB empty image
-    dd if=/dev/zero of=build/os.img bs=1M count=16
+    set -euo pipefail
 
-    # Create DOS partition table and a single FAT16 partition using all space
-    echo ",,c" | sudo sfdisk build/os.img
+    IMG=build/os.img
+    SIZE=16M
 
-    # Map partitions to loop device
-    LOOP_DEVICE=$(sudo losetup -Pf --show build/os.img)
+    cleanup() {
+        if [ -n "${MNT:-}" ] && mountpoint -q "$MNT"; then
+            sudo umount "$MNT"
+        fi
+        [ -n "${LOOP_DEVICE:-}" ] && sudo losetup -d "$LOOP_DEVICE" || true
+        [ -n "${MNT:-}" ] && rmdir "$MNT" || true
+    }
+
+    trap cleanup EXIT
+
+    truncate -s "$SIZE" "$IMG"
+
+sudo sfdisk "$IMG" <<'EOF'
+label: dos
+os.img1 : type=c
+EOF
+
+    LOOP_DEVICE=$(sudo losetup --find --show --partscan "$IMG")
     PARTITION="${LOOP_DEVICE}p1"
 
-    # Verify the partition exists
-    if [ ! -e "$PARTITION" ]; then
-        echo "Error: partition $PARTITION does not exist."
-        sudo losetup -d "$LOOP_DEVICE"
-        exit 1
-    fi
-
-    # Format the partition as FAT16
     sudo mkfs.fat -F 16 "$PARTITION"
 
-    # Mount partition and copy kernel + optional programs
-    sudo mount "$PARTITION" /mnt
-    sudo mkdir -p /mnt/boot/grub
-    sudo cp build/build.bin /mnt/boot/kernel.bin
+    MNT=$(mktemp -d)
+    sudo mount "$PARTITION" "$MNT"
 
-    # Optional: copy extra programs
+    sudo mkdir -p "$MNT/boot/grub"
+    sudo cp build/build.bin "$MNT/boot/kernel.bin"
+    sudo cp build/boot/grub/grub.cfg "$MNT/boot/grub/"
+
     if [ -d build/programs ]; then
-        sudo mkdir -p /mnt/programs
-        sudo cp build/programs/* /mnt/programs/
+        sudo mkdir -p "$MNT/programs"
+        sudo cp build/programs/* "$MNT/programs/"
     fi
 
-    sudo mkdir -p /mnt/boot/grub
-    sudo cp build/boot/grub/grub.cfg /mnt/boot/grub/
-
-    # **Install GRUB while the partition is still mounted**
     sudo grub-install \
-        --target=i386-pc \
-        --boot-directory=/mnt/boot \
-        --modules="part_msdos fat" \
-        "$LOOP_DEVICE"
-
-    # Unmount partition and detach loop device
-    sudo umount /mnt
-    sudo losetup -d "$LOOP_DEVICE"
+    --target=i386-pc \
+    --boot-directory="$MNT/boot" \
+    --modules="part_msdos fat" \
+    "$LOOP_DEVICE"
 
     # Clean up build binary
     rm build/build.bin

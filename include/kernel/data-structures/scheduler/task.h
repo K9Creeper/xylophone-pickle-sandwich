@@ -11,7 +11,13 @@
 #include <kernel/data-structures/memory-management/allocation-table.h>
 
 #define TASK_NAME_LENGTH 32
-#define TASK_STACK_SIZE 0x2000
+#define TASK_STACK_SIZE_SMALL 0x2000
+#define TASK_STACK_SIZE (TASK_STACK_SIZE_SMALL * 4)
+
+#define USER_PROGRAM_BASE       0x01000000
+
+#define USERSPACE_TASK_STACK_BOTTOM 0x0B000000
+#define USERSPACE_TASK_STACK_TOP 0x0BFFF000
 
 typedef enum task_state_e
 {
