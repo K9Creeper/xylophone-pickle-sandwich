@@ -41,15 +41,6 @@ typedef struct pci_device_s
 
 } pci_device_t;
 
-static inline uint8_t pci_match_class(
-    const pci_device_t *dev, 
-    uint8_t class, 
-    uint8_t subclass)
-{
-    return dev->header.type0.common.class_code == class &&
-           dev->header.type0.common.subclass_code == subclass;
-}
-
 static inline uint32_t pci_make_address(
     uint8_t bus,
     uint8_t slot,
