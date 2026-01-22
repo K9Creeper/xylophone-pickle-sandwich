@@ -9,4 +9,6 @@
 
 extern void pci_scan_bus(uint8_t bus);
 
+extern const pci_device_t* pci_get_devices(uint32_t* count);
+
 #endif
