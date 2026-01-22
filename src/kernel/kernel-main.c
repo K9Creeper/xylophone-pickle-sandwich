@@ -127,7 +127,31 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     /// -------------------
     /// Initialize BIOS32 / Other low-level services
+
     kernel_bios32_init();
+
+    /// -------------------
+    /// Initialize PCI Driver
+
+    pci_scan_bus(0);
+    
+    uint32_t device_count = 0;
+    const pci_device_t* devices = pci_get_devices(&device_count);
+
+    for(int i = 0; i < device_count; i++)
+    {
+        const pci_device_t dev_com = devices[i];
+        
+        uint8_t class = dev_com.header.type0.common.class_code;
+        uint8_t subclass = dev_com.header.type0.common.subclass_code;
+        uint8_t prog_if = dev_com.header.type0.common.prog_if;
+
+        if(class == 0x01)
+            dbgprintf("Mass Storage Controller (sub.prog_if): 0x%x.0x%x\n", subclass, prog_if);
+    }
+    /// -------------------
+    /// Initialize Drive Drivers
+    
 
     /// -------------------
     /// Initialize VBE's VESA
@@ -155,16 +179,6 @@ void kernel_main(uint32_t magic, uint32_t addr)
             selected_mode = (uint16_t)-1;
             goto vesa_panic;
         }
-    }
-
-    /// -------------------
-    /// Initialize Drive Drivers
-    
-    // ! TEST ONLY !
-    //
-    for (uint32_t bus = 0; bus < 256; bus++)
-    {
-        pci_scan_bus(bus);
     }
 
     /// -------------------
