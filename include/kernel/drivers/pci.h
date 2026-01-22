@@ -8,6 +8,8 @@
 
 #include <kernel/data-structures/drivers/pci.h>
 
+#define PCI_MAX_DEVICES 256
+
 typedef struct pci_driver_s
 {
     uint16_t vendor_id;
@@ -22,6 +24,32 @@ typedef struct pci_driver_s
     void (*remove)(struct pci_device_s *dev);
 } pci_driver_t;
 
+typedef struct pci_device_s
+{
+    uint8_t bus;
+    uint8_t slot;
+    uint8_t function;
+
+    pci_header_type_t header_type;
+
+    union
+    {
+        pci_header_type0_t type0;
+        pci_header_type1_t type1;
+        pci_header_type2_t type2;
+    } header;
+
+} pci_device_t;
+
+static inline uint8_t pci_match_class(
+    const pci_device_t *dev, 
+    uint8_t class, 
+    uint8_t subclass)
+{
+    return dev->header.type0.common.class_code == class &&
+           dev->header.type0.common.subclass_code == subclass;
+}
+
 static inline uint32_t pci_make_address(
     uint8_t bus,
     uint8_t slot,
@@ -29,7 +57,7 @@ static inline uint32_t pci_make_address(
     uint8_t offset)
 {
     return 0x80000000 |
-           ((uint32_t)bus  << 16) |
+           ((uint32_t)bus << 16) |
            ((uint32_t)(slot & 0x1F) << 11) |
            ((uint32_t)(func & 0x07) << 8) |
            (offset & 0xFC);
@@ -89,7 +117,7 @@ static inline void pci_write16(
     uint32_t shift = (offset & 2) * 8;
 
     value &= ~(0xFFFFu << shift);
-    value |=  ((uint32_t)data << shift);
+    value |= ((uint32_t)data << shift);
 
     pci_write32(bus, slot, func, offset, value);
 }
@@ -105,7 +133,7 @@ static inline void pci_write8(
     uint32_t shift = (offset & 3) * 8;
 
     value &= ~(0xFFu << shift);
-    value |=  ((uint32_t)data << shift);
+    value |= ((uint32_t)data << shift);
 
     pci_write32(bus, slot, func, offset, value);
 }

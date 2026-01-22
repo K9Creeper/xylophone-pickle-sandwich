@@ -33,7 +33,7 @@ typedef struct pci_device_common_s
     uint8_t latency_timer;   /* 0x0D */
     uint8_t type;            /* 0x0E */
     uint8_t BIST;            /* 0x0F */
-} pci_device_common_t;
+} __attribute__((packed)) pci_device_common_t;
 
 typedef struct pci_header_type0_s
 {
@@ -57,7 +57,7 @@ typedef struct pci_header_type0_s
     uint8_t interrupt_pin;  /* 0x3D */
     uint8_t min_grant;      /* 0x3E */
     uint8_t max_latency;    /* 0x3F */
-} pci_header_type0_t;
+} __attribute__((packed)) pci_header_type0_t;
 
 typedef struct pci_header_type1_s
 {
@@ -94,7 +94,7 @@ typedef struct pci_header_type1_s
     uint8_t interrupt_line;  /* 0x3C */
     uint8_t interrupt_pin;   /* 0x3D */
     uint16_t bridge_control; /* 0x3E */
-} pci_header_type1_t;
+}__attribute__((packed)) pci_header_type1_t;
 
 typedef struct pci_header_type2_s
 {
@@ -124,6 +124,6 @@ typedef struct pci_header_type2_s
     uint8_t interrupt_line;  /* 0x3C */
     uint8_t interrupt_pin;   /* 0x3D */
     uint16_t bridge_control; /* 0x3E */
-} pci_header_type2_t;
+} __attribute__((packed)) pci_header_type2_t;
 
 #endif
