@@ -4,7 +4,7 @@
 #ifndef DRIVERS_VESA_H
 #define DRIVERS_VESA_H
 
-#include <data-structures/vesa/vesa.h>
+#include <kernel/data-structures/drivers/vesa.h>
 
 // Not sure how many there actually are...
 #define VESA_MODE_SIZE 111
