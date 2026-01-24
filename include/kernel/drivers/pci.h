@@ -9,20 +9,7 @@
 #include <kernel/data-structures/drivers/pci.h>
 
 #define PCI_MAX_DEVICES 256
-
-typedef struct pci_driver_s
-{
-    uint16_t vendor_id;
-    uint16_t device_id;
-
-    uint8_t class_code;
-    uint8_t subclass;
-
-    const char *name;
-
-    uint8_t (*probe)(struct pci_device_s *dev);
-    void (*remove)(struct pci_device_s *dev);
-} pci_driver_t;
+#define PCI_MAX_DRIVERS 16
 
 typedef struct pci_device_s
 {
@@ -39,7 +26,30 @@ typedef struct pci_device_s
         pci_header_type2_t type2;
     } header;
 
+    struct pci_driver_s* driver;
+
 } pci_device_t;
+
+typedef struct pci_driver_s
+{
+    uint16_t vendor_id;
+    uint16_t device_id;
+
+    uint8_t class_code;
+    uint8_t subclass;
+
+    const char *name;
+
+    uint8_t (*probe)(const struct pci_device_s *dev);
+    void (*remove)(const struct pci_device_s *dev);
+} pci_driver_t;
+
+#define REGISTER_PCI_DRIVER(vendor, device, class, subclass, name, probe, remove) \
+    static const pci_driver_t __pci_driver_##probe                                \
+        __attribute__((used, section(".pci_driver"))) = {                         \
+            vendor, device, class, subclass, name, probe, remove                  \
+        };
+
 
 static inline uint32_t pci_make_address(
     uint8_t bus,

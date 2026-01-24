@@ -1,8 +1,8 @@
 /// ----------------------
-/// @file ide-device.h
+/// @file ide-controller.h
 
-#ifndef DRIVERS_IDE_DEVICE_H
-#define DRIVERS_IDE_DEVICE_H
+#ifndef DRIVERS_IDE_CONTROLLER_H
+#define DRIVERS_IDE_CONTROLLER_H
 
 #include <stdint.h>
 

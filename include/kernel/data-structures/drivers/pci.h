@@ -9,6 +9,10 @@
 #define PCI_CONFIG_ADDRESS 0xCF8
 #define PCI_CONFIG_DATA    0xCFC
 
+#define PCI_ANY_ID        0xFFFF
+#define PCI_ANY_CLASS     0xFF
+#define PCI_ANY_SUBCLASS  0xFF
+
 typedef enum pci_header_type_e
 {
     pci_header_type_general = 0x0,    /* Type 0 */

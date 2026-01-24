@@ -31,6 +31,7 @@ typedef struct drive_controller_s {
     const char *name;
     void *impl;
     const drive_controller_ops_t *ops;
+    uint32_t flags;
 } drive_controller_t;
 
 #endif

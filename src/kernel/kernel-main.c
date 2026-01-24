@@ -138,17 +138,6 @@ void kernel_main(uint32_t magic, uint32_t addr)
     uint32_t device_count = 0;
     const pci_device_t* devices = pci_get_devices(&device_count);
 
-    for(int i = 0; i < device_count; i++)
-    {
-        const pci_device_t dev_com = devices[i];
-        
-        uint8_t class = dev_com.header.type0.common.class_code;
-        uint8_t subclass = dev_com.header.type0.common.subclass_code;
-        uint8_t prog_if = dev_com.header.type0.common.prog_if;
-
-        if(class == 0x01)
-            dbgprintf("Mass Storage Controller (sub.prog_if): 0x%x.0x%x\n", subclass, prog_if);
-    }
     /// -------------------
     /// Initialize Drive Drivers
     

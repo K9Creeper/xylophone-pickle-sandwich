@@ -10,6 +10,10 @@ static uint8_t pci_scanned_bus[256] = {0};
 static uint8_t pci_decoded[256][32][8] = {0};
 static uint32_t pci_device_count = 0;
 
+// linker.ld
+extern const pci_driver_t __start_pci_driver[];
+extern const pci_driver_t __stop_pci_driver[];
+
 static void pci_read_config_block(uint8_t bus, uint8_t slot, uint8_t func, void *buffer, uint8_t size)
 {
     for (uint8_t offset = 0; offset < size; offset += 4)
@@ -60,6 +64,37 @@ static void pci_decode_device(uint8_t bus, uint8_t slot, uint8_t func, pci_devic
     pci_decoded[bus][slot][func] = 1;
 }
 
+static void pci_register_device_to_driver(pci_device_t *dev)
+{
+    for (const pci_driver_t *e = __start_pci_driver; e < __stop_pci_driver; ++e)
+    {
+        if (e->vendor_id != PCI_ANY_ID &&
+            e->vendor_id != dev->header.type0.common.vendor_id)
+            continue;
+
+        if (e->device_id != PCI_ANY_ID &&
+            e->device_id != dev->header.type0.common.device_id)
+            continue;
+
+        if (e->class_code != PCI_ANY_CLASS &&
+            e->class_code != dev->header.type0.common.class_code)
+            continue;
+
+        if (e->subclass != PCI_ANY_SUBCLASS &&
+            e->subclass != dev->header.type0.common.subclass_code)
+            continue;
+
+        if (!e->probe)
+            continue;
+
+        if (e->probe((const pci_device_t*)dev) == 0)
+        {
+            dev->driver = e;
+            return;
+        }
+    }
+}
+
 static void pci_register_device(
     uint8_t bus, uint8_t slot, uint8_t func)
 {
@@ -85,6 +120,8 @@ static void pci_register_device(
             pci_scan_bus(b);
         }
     }
+
+    pci_register_device_to_driver(dev);
 }
 
 void pci_scan_bus(uint8_t bus)
@@ -116,7 +153,9 @@ void pci_scan_bus(uint8_t bus)
     }
 }
 
-const pci_device_t* pci_get_devices(uint32_t* count){
-    if(count) *count = pci_device_count;
+const pci_device_t *pci_get_devices(uint32_t *count)
+{
+    if (count)
+        *count = pci_device_count;
     return pci_devices;
 }

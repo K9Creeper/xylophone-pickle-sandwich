@@ -65,5 +65,12 @@ SECTIONS
         __stop_kthread = .;
     }
 
+    .pci_driver ALIGN(4) : AT(ADDR(.pci_driver) - offset)
+    {
+        __start_pci_driver = .;
+        KEEP(*(.pci_driver))
+        __stop_pci_driver = .;
+    }
+
     __end_of_kernel = .;
 }
