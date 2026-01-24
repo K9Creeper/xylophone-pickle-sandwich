@@ -117,17 +117,19 @@ static uint8_t _vesa_set_mode(uint16_t mode)
     return vbe_call(0x4F02, mode, 0, NULL, NULL);
 }
 
-int vesa_init(void)
+vesa_return_status_t vesa_init(void)
 {
     if (load_vbe())
-        return -1;
+        return VESA_ERR;
 
     if (vbe_info.signature[0] != 'V' || vbe_info.signature[1] != 'E' ||
         vbe_info.signature[2] != 'S' || vbe_info.signature[3] != 'A')
-        return 1;
+        return VESA_UNSUPPORTED;
     
-    vesa_get_modes();
-    return 0;
+    if(!vesa_get_modes())
+        return VESA_ERR;
+
+    return VESA_OK;
 }
 
 void vesa_destroy(void)
@@ -145,7 +147,7 @@ void vesa_destroy(void)
     }
 }
 
-int vesa_set_mode(uint16_t mode)
+vesa_return_status_t vesa_set_mode(uint16_t mode)
 {
     for (uint8_t i = 0; i < vesa_mode_count; i++)
     {
@@ -170,10 +172,10 @@ int vesa_set_mode(uint16_t mode)
                                   (current_mode.info.bpp / 8);
         kernel_context->video_state.size = lfb_size;
 
-        return 0;
+        return VESA_OK;
     }
 
-    return 1;
+    return VESA_ERR;
 }
 
 vesa_mode_t *vesa_get_all_modes(uint16_t *count)
