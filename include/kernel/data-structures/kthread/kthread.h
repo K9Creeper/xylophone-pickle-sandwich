@@ -12,7 +12,7 @@ typedef struct kthread_s{
 } kthread_t;
 
 #define REGISTER_KTHREAD(name, func) \
-    static const kthread_t __syscall_##func \
+    static const kthread_t __kthread_##func \
     __attribute__((used, section(".kthread"))) = { name, func };
 
 #endif
