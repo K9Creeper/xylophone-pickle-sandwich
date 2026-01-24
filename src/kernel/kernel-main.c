@@ -8,6 +8,7 @@
 #include <kernel/memory-management/heap-manager.h>
 #include <kernel/memory-management/paging-manager.h>
 #include <kernel/memory-management/physical-memory-manager.h>
+#include <kernel/storage/storage-manager.h>
 #include <kernel/data-structures/kthread/kthread.h>
 
 #include "debug/serial-com1.h"
@@ -41,6 +42,14 @@ extern uint32_t __lowmem_end;
 
 extern void page_fault_handler(void);
 extern void general_protection_fault_handler(void);
+
+void storage_devices_iterate_handle(storage_controller_t* controller, void* __NULL__){
+    dbgprintf("Storage Device | %s - ", controller->name);
+
+    uint32_t sector_count = (uint32_t)controller->ops->sector_count(controller->impl);
+    uint32_t sector_size = controller->ops->sector_size(controller->impl);
+    dbgprintf("sector_count of %D and sector_size of %D\n",  sector_count, sector_size);
+}
 
 void kernel_main(uint32_t magic, uint32_t addr)
 {
@@ -127,25 +136,26 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     /// -------------------
     /// Initialize BIOS32 / Other low-level services
-
     kernel_bios32_init();
+    
+    /// -------------------
+    /// Initialize Storage Manager
+    storage_manager_setup(&kernel_context->storage_manager);
 
     /// -------------------
     /// Initialize PCI Driver
-
     pci_scan_bus(0);
     
     uint32_t device_count = 0;
     const pci_device_t* devices = pci_get_devices(&device_count);
 
     /// -------------------
-    /// Initialize Drive Drivers
-    
+    /// Initialize VFS
+    storage_manager_iterate(&kernel_context->storage_manager, storage_devices_iterate_handle, NULL);
     
 
     /// -------------------
     /// Initialize VBE's VESA
-
     if (vesa_init())
     {
     vesa_panic:
@@ -173,7 +183,6 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     /// -------------------
     /// Initialize Multitasking
-
     task_init();
     scheduler_init();
 

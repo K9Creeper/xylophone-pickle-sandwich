@@ -12,10 +12,10 @@
 #include "../descriptors/task-state-segment.h"
 #include "../drivers/programable-interval-timer/programable-interval-timer.h"
 
-#include "kernel/data-structures/kthread/kthread.h"
+#include <kernel/data-structures/kthread/kthread.h>
 #include "../kthread/kthread.h"
 
-#include "kernel/data-structures/syscalls.h"
+#include <kernel/data-structures/syscalls.h>
 
 #include "task.h"
 

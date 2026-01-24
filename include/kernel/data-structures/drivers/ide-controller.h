@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include <kernel/data-structures/storage/storage-controller.h>
+
 typedef struct ide_device_s
 {
     uint8_t  present;       
@@ -23,6 +25,11 @@ typedef struct ide_device_s
     char model[41];      
 
     uint8_t  identify_data[512];
+
+    uint32_t controller_status;
+
+    volatile uint8_t irq_expected;
+    volatile uint8_t irq_fired;
 } ide_device_t;
 
 #endif

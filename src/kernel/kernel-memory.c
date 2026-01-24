@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kernel/util.h"
+#include <kernel/util.h>
 #include <kernel/data-structures/kernel-context.h>
 #include <kernel/memory-management/heap-manager.h>
 
