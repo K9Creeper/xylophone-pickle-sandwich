@@ -1,8 +1,8 @@
-/// ------------------------
-/// @file drive-controller.h
+/// --------------------------
+/// @file storage-controller.h
 
-#ifndef DRIVER_STORAGE_CONTROLLER_H
-#define DRIVER_STORAGE_CONTROLLER_H
+#ifndef STORAGE_STORAGE_CONTROLLER_H
+#define STORAGE_STORAGE_CONTROLLER_H
 
 #include <stdint.h>
 

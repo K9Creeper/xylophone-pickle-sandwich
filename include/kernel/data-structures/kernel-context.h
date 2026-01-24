@@ -10,6 +10,8 @@
 #include <kernel/data-structures/memory-management/physical-memory-manager.h>
 #include <kernel/data-structures/memory-management/paging-manager.h>
 
+#include <kernel/data-structures/storage/storage-manager.h>
+
 typedef struct kernel_context_video_state_s
 {
     uint8_t is_text_mode;
@@ -37,6 +39,8 @@ typedef struct kernel_context_s
     paging_manager_t paging_manager;
     physical_memory_manager_t system_physical_memory_manager;
     
+    storage_manager_t storage_manager;
+
     kernel_context_memory_info_t memory_info;
     kernel_context_video_state_t video_state;
 } kernel_context_t;

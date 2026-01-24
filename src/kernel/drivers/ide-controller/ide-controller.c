@@ -1,7 +1,7 @@
 /// ----------------------
 /// @file ide-controller.c
 
-#include "kernel/data-structures/drivers/storage-controller.h"
+#include "kernel/data-structures/storage/storage-controller.h"
 #include "kernel/data-structures/drivers/ide-controller.h"
 
 #include "kernel/drivers/pci.h"
@@ -82,7 +82,7 @@ static uint8_t ide_pci_probe(const pci_device_t *pci_dev)
 
             if (ata_pio_init_drive(pci_dev, drive, &ide_devices[dev_idx]) != 0)
                 continue;
-                
+
             const char *name = ide_devices[dev_idx].model;
             void *impl = (void *)&ide_devices[dev_idx];
             const storage_controller_ops_t *ops = &ide_ops;
