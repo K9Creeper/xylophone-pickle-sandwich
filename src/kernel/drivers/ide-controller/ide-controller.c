@@ -1,7 +1,7 @@
 /// ----------------------
 /// @file ide-controller.c
 
-#include "kernel/data-structures/drivers/drive-controller.h"
+#include "kernel/data-structures/drivers/storage-controller.h"
 #include "kernel/data-structures/drivers/ide-controller.h"
 
 #include "kernel/drivers/pci.h"
@@ -17,7 +17,7 @@ static int32_t ide_write(void *impl, uint64_t lba, uint32_t sector_count, const 
 static uint32_t ide_sector_size(void *impl);
 static uint64_t ide_sector_count(void *impl);
 
-static const drive_controller_ops_t ide_ops = {
+static const storage_controller_ops_t ide_ops = {
     .read = ide_read,
     .write = ide_write,
     .sector_size = ide_sector_size,
@@ -82,16 +82,13 @@ static uint8_t ide_pci_probe(const pci_device_t *pci_dev)
 
             if (ata_pio_init_drive(pci_dev, drive, &ide_devices[dev_idx]) != 0)
                 continue;
-
-            static const char *channel_names[] = {"Primary", "Secondary"};
-            static const char *drive_names[] = {"Master", "Slave"};
-
+                
             const char *name = ide_devices[dev_idx].model;
             void *impl = (void *)&ide_devices[dev_idx];
-            const drive_controller_ops_t *ops = &ide_ops;
+            const storage_controller_ops_t *ops = &ide_ops;
             const uint32_t flags = 0;
 
-            // Create a driver_controller
+            // Create a storage_controller
         }
     }
 
