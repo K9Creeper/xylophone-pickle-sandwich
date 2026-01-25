@@ -147,9 +147,8 @@ static uint8_t ide_pci_probe(const pci_device_t *pci_dev)
         {
             uint8_t dev_idx = (channel << 1) | drive;
 
-            uint8_t code = ata_pio_init_drive(pci_dev, drive, &ide_devices[dev_idx]);
+            uint8_t code = ata_pio_init_drive(channel, drive, &ide_devices[dev_idx]);
             if (code != 0){
-                dbgprintf("Failed drive init %d.%d with code %d...\n", channel, drive, code);
                 continue;
             }
 
@@ -157,7 +156,7 @@ static uint8_t ide_pci_probe(const pci_device_t *pci_dev)
             void *impl = (void *)&ide_devices[dev_idx];
             const storage_controller_ops_t *ops = &ide_ops;
             const uint32_t flags = 0;
-            dbgprintf("Passed drive init %d.%d with code %d...\n", channel, drive, code);
+
             storage_manager_add_controller(&kernel_context->storage_manager, (storage_controller_t){ 
                 name,
                 impl,

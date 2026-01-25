@@ -12,19 +12,28 @@ static inline ata_error_t ata_pio_check_error(uint16_t io_base)
 {
     uint8_t status = inportb(io_base + ATA_REG_STATUS);
 
-    if (status & ATA_SR_DF) return ATA_ERR_DRIVE_FAULT;
+    if (status & ATA_SR_DF)
+        return ATA_ERR_DRIVE_FAULT;
     if (status & ATA_SR_ERR)
     {
         uint8_t err = inportb(io_base + ATA_REG_ERROR);
 
-        if (err & 0x80) return ATA_ERR_BAD_BLOCK;
-        if (err & 0x40) return ATA_ERR_UNCORRECTABLE;
-        if (err & 0x20) return ATA_ERR_MEDIA_CHANGED;
-        if (err & 0x10) return ATA_ERR_IDNF;
-        if (err & 0x08) return ATA_ERR_MCR;
-        if (err & 0x04) return ATA_ERR_CMD_ABORTED;
-        if (err & 0x02) return ATA_ERR_TK0NF;
-        if (err & 0x01) return ATA_ERR_AMNF;
+        if (err & 0x80)
+            return ATA_ERR_BAD_BLOCK;
+        if (err & 0x40)
+            return ATA_ERR_UNCORRECTABLE;
+        if (err & 0x20)
+            return ATA_ERR_MEDIA_CHANGED;
+        if (err & 0x10)
+            return ATA_ERR_IDNF;
+        if (err & 0x08)
+            return ATA_ERR_MCR;
+        if (err & 0x04)
+            return ATA_ERR_CMD_ABORTED;
+        if (err & 0x02)
+            return ATA_ERR_TK0NF;
+        if (err & 0x01)
+            return ATA_ERR_AMNF;
 
         return ATA_ERR_UNKNOWN;
     }
@@ -32,12 +41,56 @@ static inline ata_error_t ata_pio_check_error(uint16_t io_base)
     return ATA_NO_ERROR;
 }
 
-uint8_t ata_pio_init_drive(const pci_device_t *dev, uint8_t drive, ide_device_t *dev_out)
+static inline void ata_pio_io_wait(int32_t io_base)
+{
+    inportb(io_base + ATA_REG_ALTSTATUS);
+    inportb(io_base + ATA_REG_ALTSTATUS);
+    inportb(io_base + ATA_REG_ALTSTATUS);
+    inportb(io_base + ATA_REG_ALTSTATUS);
+}
+
+static inline ata_error_t ata_wait_irq(ide_device_t *dev)
+{
+    dev->irq_expected = 1;
+    dev->irq_fired = 0;
+
+    for (int i = 0; i < 1000000; i++)
+    {
+        if (dev->irq_fired)
+            break;
+
+        __asm__ volatile ("pause");
+    }
+    if (!dev->irq_fired)
+        return ATA_ERR_IRQ_TIMEOUT;
+
+    dev->irq_expected = 0;
+    dev->irq_fired = 0;
+
+    return ATA_NO_ERROR;
+}
+
+static ata_error_t ata_post_irq_check(uint16_t io)
+{
+    uint8_t status = inportb(io + ATA_REG_STATUS);
+
+    if (status & ATA_SR_ERR)
+        return ATA_ERR_CMD_ABORTED;
+
+    if (status & ATA_SR_DF)
+        return ATA_ERR_DRIVE_FAULT;
+
+    if (!(status & ATA_SR_DRQ))
+        return ATA_ERR_DRQ_TIMEOUT;
+
+    return ATA_NO_ERROR;
+}
+
+uint8_t ata_pio_init_drive(uint8_t channel, uint8_t drive, ide_device_t *dev_out)
 {
     if (!dev_out)
         return 1;
 
-    uint8_t channel = ((dev->bus == ATA_PRIMARY) ? ATA_PRIMARY : ATA_SECONDARY);
     uint16_t io = ((channel == ATA_PRIMARY) ? ATA_PRIMARY_IO : ATA_SECONDARY_IO);
 
     dev_out->channel = channel;
@@ -116,42 +169,8 @@ uint8_t ata_pio_init_drive(const pci_device_t *dev, uint8_t drive, ide_device_t 
     return 0;
 }
 
-static inline void ata_pio_io_wait(int32_t io_base)
+void ata_pio_clear_status(ide_device_t *dev)
 {
-    inportb(io_base + ATA_REG_ALTSTATUS);
-    inportb(io_base + ATA_REG_ALTSTATUS);
-    inportb(io_base + ATA_REG_ALTSTATUS);
-    inportb(io_base + ATA_REG_ALTSTATUS);
-}
-
-static inline ata_error_t ata_wait_ready_and_drq(uint16_t io_base)
-{
-    uint8_t status;
-    int32_t timeout = 1000000;
-
-    do {
-        status = inportb(io_base + ATA_REG_STATUS);
-        if (--timeout == 0) return ATA_ERR_BSY_TIMEOUT;
-    } while (status & ATA_SR_BSY);
-
-    if (!(status & ATA_SR_DRDY)) return ATA_ERR_DRQ_TIMEOUT;
-
-    return ATA_NO_ERROR;
-}
-
-static inline void ata_wait_irq(ide_device_t *dev) {
-    dev->irq_expected = 1;
-    dev->irq_fired = 0;
-
-    while (!dev->irq_fired) {
-        __asm__ volatile ("nop");
-    }
-
-    dev->irq_expected = 0;
-    dev->irq_fired = 0;
-}
-
-void ata_pio_clear_status(ide_device_t *dev){
     uint16_t io = ((dev->channel == ATA_PRIMARY) ? ATA_PRIMARY_IO : ATA_SECONDARY_IO);
     inportb(io + ATA_REG_STATUS);
 }
@@ -163,6 +182,8 @@ ata_error_t ata_pio_select_drive(uint8_t channel, uint8_t drive)
 
     outportb(io + ATA_REG_HDDEVSEL, hddevsel);
     ata_pio_io_wait(io);
+
+    return ata_pio_check_error(io);
 }
 
 ata_error_t ata_pio_read_sector(ide_device_t *dev, uint64_t lba, void *buf)
@@ -170,34 +191,33 @@ ata_error_t ata_pio_read_sector(ide_device_t *dev, uint64_t lba, void *buf)
     if (dev->command_sets & (1 << 26))
         return ATA_ERR_48BIT_UNSUPPORTED;
 
-    const uint16_t io_base = (dev->channel == ATA_PRIMARY) ? ATA_PRIMARY_IO : ATA_SECONDARY_IO;
-    const uint8_t drive = dev->drive;
+    uint16_t io = (dev->channel == ATA_PRIMARY) ? ATA_PRIMARY_IO : ATA_SECONDARY_IO;
+    uint16_t *buf16 = buf;
 
-    ata_error_t err = ata_wait_ready_and_drq(io_base);
-    if (err != ATA_NO_ERROR) return err;
+    ata_pio_select_drive(dev->channel, dev->drive);
 
-    uint16_t *buf16 = (uint16_t *)buf;
+    outportb(io + ATA_REG_HDDEVSEL, 0xE0 | (dev->drive << 4) | ((lba >> 24) & 0x0F));
+    ata_pio_io_wait(io);
 
-    outportb(io_base + ATA_REG_CONTROL, 0x02);
-    ata_pio_io_wait(io_base);
+    outportb(io + ATA_REG_SECCOUNT0, 1);
+    outportb(io + ATA_REG_LBA0, (uint8_t)lba);
+    outportb(io + ATA_REG_LBA1, (uint8_t)(lba >> 8));
+    outportb(io + ATA_REG_LBA2, (uint8_t)(lba >> 16));
 
-    outportb(io_base + ATA_REG_HDDEVSEL, 0xE0 | (drive << 4) | ((lba >> 24) & 0x0F));
-    ata_pio_io_wait(io_base);
+    outportb(io + ATA_REG_COMMAND, ATA_CMD_READ_PIO);
 
-    outportb(io_base + ATA_REG_FEATURES, 0x00);
-    outportb(io_base + ATA_REG_SECCOUNT0, 1);
-    outportb(io_base + ATA_REG_LBA0, (uint8_t)(lba & 0xFF));
-    outportb(io_base + ATA_REG_LBA1, (uint8_t)((lba >> 8) & 0xFF));
-    outportb(io_base + ATA_REG_LBA2, (uint8_t)((lba >> 16) & 0xFF));
+    ata_error_t err = ata_wait_irq(dev);
+    if (err != ATA_NO_ERROR)
+        return err;
 
-    outportb(io_base + ATA_REG_COMMAND, ATA_CMD_READ_PIO);
-
-    ata_wait_irq(dev);
+    err = ata_post_irq_check(io);
+    if (err != ATA_NO_ERROR)
+        return err;
 
     for (int i = 0; i < 256; i++)
-        buf16[i] = inports(io_base + ATA_REG_DATA);
+        buf16[i] = inports(io + ATA_REG_DATA);
 
-    return ata_pio_check_error(io_base);
+    return ATA_NO_ERROR;
 }
 
 ata_error_t ata_pio_write_sector(ide_device_t *dev, uint64_t lba, const void *buf)
@@ -205,38 +225,34 @@ ata_error_t ata_pio_write_sector(ide_device_t *dev, uint64_t lba, const void *bu
     if (dev->command_sets & (1 << 26))
         return ATA_ERR_48BIT_UNSUPPORTED;
 
-    const uint16_t io_base = (dev->channel == ATA_PRIMARY) ? ATA_PRIMARY_IO : ATA_SECONDARY_IO;
-    const uint8_t drive = dev->drive;
+    uint16_t io = (dev->channel == ATA_PRIMARY) ? ATA_PRIMARY_IO : ATA_SECONDARY_IO;
+    const uint16_t *buf16 = buf;
 
-    ata_error_t err = ata_wait_ready_and_drq(io_base);
-    if (err != ATA_NO_ERROR) return err;
+    ata_pio_select_drive(dev->channel, dev->drive);
 
-    const uint16_t *buf16 = (const uint16_t *)buf;
+    outportb(io + ATA_REG_HDDEVSEL, 0xE0 | (dev->drive << 4) | ((lba >> 24) & 0x0F));
+    ata_pio_io_wait(io);
 
-    outportb(io_base + ATA_REG_CONTROL, 0x02);
-    ata_pio_io_wait(io_base);
+    outportb(io + ATA_REG_SECCOUNT0, 1);
+    outportb(io + ATA_REG_LBA0, (uint8_t)lba);
+    outportb(io + ATA_REG_LBA1, (uint8_t)(lba >> 8));
+    outportb(io + ATA_REG_LBA2, (uint8_t)(lba >> 16));
 
-    outportb(io_base + ATA_REG_HDDEVSEL, 0xE0 | (drive << 4) | ((lba >> 24) & 0x0F));
-    ata_pio_io_wait(io_base);
+    outportb(io + ATA_REG_COMMAND, ATA_CMD_WRITE_PIO);
 
-    outportb(io_base + ATA_REG_FEATURES, 0x00);
-    outportb(io_base + ATA_REG_SECCOUNT0, 1);
-    outportb(io_base + ATA_REG_LBA0, (uint8_t)(lba & 0xFF));
-    outportb(io_base + ATA_REG_LBA1, (uint8_t)((lba >> 8) & 0xFF));
-    outportb(io_base + ATA_REG_LBA2, (uint8_t)((lba >> 16) & 0xFF));
+    ata_error_t err = ata_wait_irq(dev);
+    if (err != ATA_NO_ERROR)
+        return err;
 
-    outportb(io_base + ATA_REG_COMMAND, ATA_CMD_WRITE_PIO);
-
-    ata_wait_irq(dev);
+    err = ata_post_irq_check(io);
+    if (err != ATA_NO_ERROR)
+        return err;
 
     for (int i = 0; i < 256; i++)
-        outports(io_base + ATA_REG_DATA, buf16[i]);
+        outports(io + ATA_REG_DATA, buf16[i]);
 
-    if (dev->command_sets & ATA_CMD_CACHE_FLUSH)
-    {
-        outportb(io_base + ATA_REG_COMMAND, ATA_CMD_CACHE_FLUSH);
-        ata_wait_irq(dev);
-    }
+    outportb(io + ATA_REG_COMMAND, ATA_CMD_CACHE_FLUSH);
+    ata_wait_irq(dev);
 
-    return ata_pio_check_error(io_base);
+    return ATA_NO_ERROR;
 }
