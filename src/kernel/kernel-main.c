@@ -151,7 +151,7 @@ void kernel_main(uint32_t magic, uint32_t addr)
 
     /// -------------------
     /// Initialize VFS
-    storage_manager_iterate(&kernel_context->storage_manager, storage_devices_iterate_handle, NULL);
+    
     
 
     /// -------------------
